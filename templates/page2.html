@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="rus">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% load static %}
+    <link rel="stylesheet" type="text/css" href="{% static 'style.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'page2.css' %}">
+</head>
+
+<body>
+    {% include 'components/header.html' %}
+    <div class="page-container">
+        <div class="page-title">
+            {{card.title}}
+        </div>
+        <div class="content-wrapper">
+            <div class="content-info">
+                <div class="content-img">
+                    <div class="image-wrapper">
+                        <img src="{{ card.image }}" class="image-wrapper">
+                    </div>
+                </div>
+                <div class="garanties">
+                    <div class="garanties-wrapper">
+                        <div class="making-progect">
+                            Создание проекта с учетом ваших пожеланий и требований
+                        </div>
+                        <div class="working-time">
+                            Время выполнения зависит от объема работ
+                        </div>
+                        <div class="work-garant">
+                            Гарантия на выполненные работы и материалы 1 год
+                        </div>
+                        <div class="work-price">
+                            <p>Цена</p>
+                            <p>{{card.price}}  ₽/м²</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="subtitle">
+                {{card.description}}
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

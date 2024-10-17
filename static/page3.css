@@ -1,0 +1,117 @@
+.container-page{
+    width: 1440px;
+    height: 100vh;
+    margin-left: 35px;
+    margin-right: 35px;
+}
+
+.card-container{
+    width: 428px;
+    height: 500px;
+    background: linear-gradient(180deg, #3E80C2 0%, #72A9E0 100%);
+    margin-bottom: 20px;
+    border-bottom-right-radius: 50px;
+    margin-right: 20px;
+}
+
+.card{
+    height: auto;
+    display: flex;
+    flex-direction:row;
+    margin-left: 45px;
+    margin-right: 45px;
+    margin-top: 30px;
+    background: white;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+}
+
+.value-input{
+    border: none;
+    font-size: 20px;
+    border-radius: 20px;
+    padding-left: 10px;
+    width: 100px;
+    color: #3E80C2;
+}
+
+.title-works{
+    font-size: 35px;
+    width: auto;
+}
+
+.title-fundraising{
+    font-size: 22px;
+    width: auto;
+    border-radius: 20px;
+    background: #72A9E0;
+    color: white;
+    font-size: 22px;
+    height: 70px;
+    align-items: center;
+    display: flex;
+    padding-left: 10px;
+    width: 540px;
+}
+
+.result-fundraising{
+    height: 70px;
+    width: auto;
+    padding-left: 140px;
+    align-items: center;
+    display: flex;
+    font-weight: bold;
+    font-size: 27px;
+}
+
+.container-up{
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    /* gap: 50px; */
+}
+
+.place{
+    border-radius: 20;
+    font-size: 22px;
+    background: #72A9E0;
+    color: white;
+    width: auto;
+    padding-right: 10px;
+    height: 70px;
+    align-items: center;
+    display: flex;
+    border-radius: 20px;
+    padding-left: 10px;
+    text-align: center;
+    margin-left: 50px;
+    margin-right: 10px;
+}
+
+.work_img{
+    width: 428px;
+    height: 275px;
+    display: block;
+    padding: 0;
+}
+
+.info_work{
+    margin-left: 24px;
+    margin-top: 10px;
+    margin-bottom: 5px;
+    font-weight: normal;
+}
+
+.title-card{
+    font-size: 24px;
+    color: white;
+    height: 60px;
+}
+
+.specifications{
+    display: grid;
+    margin-top: 12px;
+    font-size: 20px;
+    gap: 12px;
+    color: white;
+}

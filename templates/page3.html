@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="rus">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% load static %}
+    <link rel="stylesheet" type="text/css" href="{% static 'style.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'page3.css' %}">
+</head>
+<body>
+    {% include 'components/header.html' %}
+    <div class="container-page">
+        <div class="container-up">
+            <p class="title-works">Реконструкционные работы</p>
+            <div class="place"><p>{{ place }}</p></div>
+            <div class="title-fundraising">Результат сбора средств: 
+                <p class="result-fundraising">{{fundraising}} ₽</p>
+            </div>
+        </div>      
+    <div class="card">
+        {% for card in cards %}
+                <div class="card-container">
+                    <div><img src="{{ card.image }}" class="work_img"></div>
+                    <div class="info_work">
+                        <div class="title-card">{{ card.title }}</div>
+                        <div class="specifications">
+                            <p>Цена: {{card.price}} ₽/м²</p>
+                            <!-- <div>Объем работ: {{ card.value }} м²</div> -->
+                            <div>Объем работ: 
+                                <input type="text" id="value-{{ card.id }}" class="value-input" value="{{ card.value }}" readonly />
+                                м²
+                            </div>
+                        </div>
+                    </div>
+                </div> 
+        {% endfor %}
+    </div>
+    </div>
+</body>
+</html>

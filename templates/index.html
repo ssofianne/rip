@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="rus">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Сбор средств на реконструкцию исторических зданий</title>
+    {% load static %}
+    <link rel="stylesheet" type="text/css" href="{% static 'style.css' %}">
+  </head>
+  <body>
+        {% include 'components/header.html' %}
+        <div class="page_container">
+            <div class="reserch">
+                <form action="{% url 'main_page' %}" method="get">
+                    <p class="title_reserch">Общие работы</p>
+                    <input class="work_types" type="text" name="type_of_work" placeholder="Вид работы" value="{{ type_of_work }}">
+                    <button class="reserch-button" type="submit">Поиск</button>
+                    <a href="{% url 'page3' work_id=work.id %}" class="request">
+                        <img src="http://127.0.0.1:9000/fond-media/request.png" class="application">
+                        <div class="sum-request">{{count}}</div>
+                    </a>                
+                </form>
+            </div>
+            <div class="space">
+                <div class="container">
+                    {% for card in cards %}
+                        <div class="card">
+                            <img src="{{ card.image }}" class="image">
+                            <div class="info">
+                                <p class="title">{{ card.title }}</p>
+                                <p class="price">{{ card.price }} ₽/м²</p>
+                            </div>
+                            <div class="down">
+                                <a href="{% url 'page2' card_id=card.id %}" class="card-button">Подробнее </a>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            <div class="space">
+        </div>    
+  </body>
+</html>
