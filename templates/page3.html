@@ -12,7 +12,9 @@
     <div class="container-page">
         <div class="container-up">
             <p class="title-works">Реконструкционные работы</p>
-            <div class="place"><p>{{ place }}</p></div>
+            <div>
+                <input type="text" class="place" place="{{ place }}"/>
+            </div>
             <div class="title-fundraising">Результат сбора средств: 
                 <p class="result-fundraising">{{fundraising}} ₽</p>
             </div>
@@ -27,7 +29,7 @@
                             <p>Цена: {{card.price}} ₽/м²</p>
                             <!-- <div>Объем работ: {{ card.value }} м²</div> -->
                             <div>Объем работ: 
-                                <input type="text" id="value-{{ card.id }}" class="value-input" value="{{ card.value }}" readonly />
+                                <input type="text" id="value-{{ card.id }}" class="value-input" value="{{ card.value }}" />
                                 м²
                             </div>
                         </div>
