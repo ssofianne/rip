@@ -24,15 +24,15 @@
             </div>
             <div class="space">
                 <div class="container">
-                    {% for card in cards %}
+                    {% for work in works %}
                         <div class="card">
-                            <img src="{{ card.image }}" class="image">
+                            <img src="{{ work.imageUrl }}" class="image">
                             <div class="info">
-                                <p class="title">{{ card.title }}</p>
-                                <p class="price">{{ card.price }} ₽/м²</p>
+                                <p class="title">{{ work.title }}</p>
+                                <p class="price">{{ work.price }} ₽/м²</p>
                             </div>
                             <div class="down">
-                                <a href="{% url 'page2' card_id=card.id %}" class="card-button">Подробнее </a>
+                                <a href="{% url 'page2' card_id=work.id %}" class="card-button">Подробнее </a>
                                 <a class="card-button">Добавить</a>
                             </div>
                         </div>
