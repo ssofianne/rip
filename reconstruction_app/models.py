@@ -4,7 +4,7 @@ from django.utils import timezone
 
 class Work(models.Model):
     title = models.CharField(max_length=100, null=False)
-    description = models.CharField(max_length=500, default="У этого вида работ нет описания", null=False)
+    description = models.TextField(default="У этого вида работ нет описания", null=False)
     price = models.IntegerField(default=5000, null=False)
     imageUrl = models.URLField(null=False)
     is_deleted = models.BooleanField(default=False, null=False)
