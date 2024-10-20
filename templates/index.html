@@ -18,7 +18,7 @@
                     <button class="reserch-button" type="submit">Поиск</button>
                     <a href="{% url 'page3' work_id=work.id %}" class="request">
                         <img src="http://127.0.0.1:9000/fond-media/request.png" class="application">
-                        <div class="sum-request">{{count}}</div>
+                        <div class="sum-request">{{application_counter}}</div>
                     </a>                
                 </form>
             </div>
@@ -36,6 +36,8 @@
                                 <a class="card-button">Добавить</a>
                             </div>
                         </div>
+                    {% empty %}
+                        <p>Нет доступных работ.</p>    
                     {% endfor %}
                 </div>
             <div class="space">

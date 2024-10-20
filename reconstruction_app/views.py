@@ -1,5 +1,11 @@
 from django.http import HttpResponseBadRequest, HttpResponseNotFound
-from django.shortcuts import render
+from django.shortcuts import render, redirect, get_object_or_404
+from django.views.decorators.http import require_POST, require_GET
+
+from django.db import connection
+
+from django.contrib.auth.models import User
+from reconstruction_app.models import Work, Application, Space
 
 cards = [
     {
@@ -89,19 +95,46 @@ def page3(request, work_id):
         'fundraising': work['fundraising']})
 
 
-def main_page(request):
+# def main_page(request):
         
-    work = next((work for work in works if work['id'] == 1), None)
-    type_of_work = request.GET.get('type_of_work', '')
-    filtered_cards = cards
+#     work = next((work for work in works if work['id'] == 1), None)
+#     type_of_work = request.GET.get('type_of_work', '')
+#     filtered_cards = cards
 
-    count = 0
-    if work: 
-        count = len(work['card_id']) 
+#     count = 0
+#     if work: 
+#         count = len(work['card_id']) 
 
-    if type_of_work:
-        filtered_cards = [card for card in cards if type_of_work.lower() in card['title'].lower()]
+#     if type_of_work:
+#         filtered_cards = [card for card in cards if type_of_work.lower() in card['title'].lower()]
     
-    return render(request, 'index.html', {'cards': filtered_cards, 'type_of_work': type_of_work, 'work': work, 'count': count})
-
+#     return render(request, 'index.html', {'cards': filtered_cards, 'type_of_work': type_of_work, 'work': work, 'count': count})
+def main_page(request):
      
+     work = next((work for work in works if work['id'] == 1), None)
+
+     type_of_work = request.GET.get('type_of_work', '')
+     all_works = Work.objects.filter(is_deleted=False)
+
+     if type_of_work:
+         all_works = all_works.filter(title=type_of_work)
+
+     default_user = User.objects.get(id=2) # id = 1 is superuser
+     user_applications = Application.objects.filter(user=default_user)
+     draft_application = user_applications.filter(status='draft').first()
+
+     spaces = Space.objects.filter(application=draft_application)
+     application_size = 0
+
+     for space in spaces:
+        if space.work.is_deleted is False:
+           application_size += 1    
+
+     context = {
+        'works': all_works,
+        'application': draft_application,
+        'application_counter': application_size,
+        'work': work
+    }
+     
+     return render(request, 'index.html', context)
