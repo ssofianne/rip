@@ -1,4 +1,4 @@
-from django.http import HttpResponseBadRequest, HttpResponseNotFound
+from django.http import Http404, HttpResponseBadRequest, HttpResponseNotFound
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.http import require_POST, require_GET
 
@@ -71,11 +71,23 @@ works = [
     }
 ]
 
-def page2(request, card_id):
+# def page2(request, card_id):
 
-    card = next((card for card in cards if card['id'] == card_id),None)
+#     card = next((card for card in cards if card['id'] == card_id),None)
 
-    return render(request, 'page2.html', {'card': card})
+#     return render(request, 'page2.html', {'card': card})
+
+def page2(request, work_id):
+    
+    searched_work = get_object_or_404(Work, pk=work_id)
+    
+    if searched_work.is_deleted == True:
+      return Http404("Реконструкционная работа удалена")
+    
+    context = {
+        'work': searched_work
+    }
+    return render(request, 'page2.html', context)
 
 def page3(request, work_id):
 

@@ -21,6 +21,6 @@ from reconstruction_app import views
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', views.main_page, name='main_page'),
-    path('card/<int:card_id>/', views.page2, name='page2'),
+    path('card/<int:work_id>/', views.page2, name='page2'),
     path('work/<int:work_id>/', views.page3, name='page3'),
 ]

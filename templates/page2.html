@@ -13,13 +13,13 @@
     {% include 'components/header.html' %}
     <div class="page-container">
         <div class="page-title">
-            {{card.title}}
+            {{work.title}}
         </div>
         <div class="content-wrapper">
             <div class="content-info">
                 <div class="content-img">
                     <div class="image-wrapper">
-                        <img src="{{ card.image }}" class="image-wrapper">
+                        <img src="{{ work.imageUrl }}" class="image-wrapper">
                     </div>
                 </div>
                 <div class="garanties">
@@ -35,13 +35,13 @@
                         </div>
                         <div class="work-price">
                             <p>Цена</p>
-                            <p>{{card.price}}  ₽/м²</p>
+                            <p>{{work.price}}  ₽/м²</p>
                         </div>
                     </div>
                 </div>
             </div>
             <div class="subtitle">
-                {{card.description}}
+                {{work.description}}
             </div>
         </div>
     </div>
