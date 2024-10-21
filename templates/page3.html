@@ -13,29 +13,31 @@
         <div class="container-up">
             <p class="title-works">Реконструкционные работы</p>
             <div>
-                <input type="text" class="place" place="{{ place }}"/>
+                <input type="text" class="place" placeholder="Введите место" value="{{ place }}"/>
             </div>
             <div class="title-fundraising">Результат сбора средств: 
                 <p class="result-fundraising">{{fundraising}} ₽</p>
             </div>
-        </div>      
-    <div class="card">
-        {% for card in cards %}
-                <div class="card-container">
-                    <div><img src="{{ card.image }}" class="work_img"></div>
-                    <div class="info_work">
-                        <div class="title-card">{{ card.title }}</div>
-                        <div class="specifications">
-                            <p>Цена: {{card.price}} ₽/м²</p>
-                            <!-- <div>Объем работ: {{ card.value }} м²</div> -->
-                            <div>Объем работ: 
-                                <input type="text" id="value-{{ card.id }}" class="value-input" value="{{ card.value }}" />
-                                м²
+        </div>
+    <div class= "card_and_buttons">          
+        <div class="card">
+            {% for work in works %}
+                    <div class="card-container">
+                        <div><img src="{{ work.work.imageUrl }}" class="work_img"></div>
+                        <div class="info_work">
+                            <div class="title-card">{{ work.work.title }}</div>
+                            <div class="specifications">
+                                <p>Цена: {{work.work.price}} ₽/м²</p>
+                                <div>Объем работ: 
+                                    <input type="text" id="value-{{ work.work.id }}" class="value-input" value="{{ work.space }}" />
+                                    м²
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div> 
-        {% endfor %}
+                    </div>  
+            {% endfor %}
+        </div>
+        <div class="delete_application_button">Очистить заявку</div>
     </div>
     </div>
 </body>

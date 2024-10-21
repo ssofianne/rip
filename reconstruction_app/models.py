@@ -40,6 +40,7 @@ class Space(models.Model):
     application = models.ForeignKey(Application, on_delete=models.CASCADE)
     work = models.ForeignKey(Work, on_delete=models.CASCADE)
     space = models.IntegerField()
+    
     class Meta:
         db_table = 'space'
         unique_together = ('application', 'work')

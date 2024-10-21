@@ -78,7 +78,7 @@ works = [
 #     return render(request, 'page2.html', {'card': card})
 
 def page2(request, work_id):
-    
+
     searched_work = get_object_or_404(Work, pk=work_id)
     
     if searched_work.is_deleted == True:
@@ -89,22 +89,53 @@ def page2(request, work_id):
     }
     return render(request, 'page2.html', context)
 
-def page3(request, work_id):
+# def page3(request, work_id):
 
-    work = next((work for work in works if work['id'] == work_id), None)
+#     work = next((work for work in works if work['id'] == work_id), None)
     
-    card_in_work = []
-    for works_card in work['card_id']:
-        for card in cards:
-            if card['id'] == works_card['id']:
-                card_with_value = card.copy()
-                card_with_value['value'] = works_card['value']
-                card_in_work.append(card_with_value)
+#     card_in_work = []
+#     for works_card in work['card_id']:
+#         for card in cards:
+#             if card['id'] == works_card['id']:
+#                 card_with_value = card.copy()
+#                 card_with_value['value'] = works_card['value']
+#                 card_in_work.append(card_with_value)
  
-    return render(request, 'page3.html', {'cards':card_in_work, 
-        'work_id': work['id'],
-        'place': work['place'],
-        'fundraising': work['fundraising']})
+#     return render(request, 'page3.html', {'cards':card_in_work, 
+#         'work_id': work['id'],
+#         'place': work['place'],
+#         'fundraising': work['fundraising']})
+
+def page3(request, application_id):
+    application = get_object_or_404(Application, pk=application_id)
+
+    if application.status != 'draft':
+       raise Http404("Заявка не доступна для редактирования")
+
+    spaces = Space.objects.filter(application=application).order_by('space')
+
+    application_works = []
+    index = 1
+    for space in spaces:
+      if space.work.is_deleted is False:
+        application_works.append({ 'work': space.work,'space': space.space, 'index': index })
+        index += 1
+
+    place = ''
+    if application.place is not None:
+       place = application.place
+    fundraising = ''
+    if application.fundraising is not None:
+       fundraising = application.fundraising   
+
+    context = {
+      'id': application.id,
+      'place': place,
+      'fundraising':fundraising,
+      'works': application_works,
+    }
+
+    return render(request, 'page3.html', context)
 
 
 # def main_page(request):

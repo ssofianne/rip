@@ -6,24 +6,24 @@
 }
 
 .card-container{
-    width: 428px;
-    height: 500px;
+    width: 1120px;
+    height: 275px;
     background: linear-gradient(180deg, #3E80C2 0%, #72A9E0 100%);
     margin-bottom: 20px;
     border-bottom-right-radius: 50px;
     margin-right: 20px;
+    display: flex;
 }
 
 .card{
     height: auto;
-    display: flex;
-    flex-direction:row;
+    /* display: flex; */
     margin-left: 45px;
-    margin-right: 45px;
+    margin-right: 25px;
     margin-top: 30px;
     background: white;
-    justify-content: flex-start;
-    flex-wrap: wrap;
+    /* justify-content: flex-start;
+    flex-wrap: wrap; */
 }
 
 .value-input{
@@ -115,4 +115,22 @@
     font-size: 20px;
     gap: 12px;
     color: white;
+}
+
+.card_and_buttons{
+    display: flex;
+    /* gap: 280px; */
+}
+
+.delete_application_button{
+    margin-top: 27px;
+    background: #3E80C2;
+    height: 50px;
+    width: 200px;
+    font-size: 20px;
+    justify-content: center;
+    color: white;
+    display: flex;
+    align-items: center;
+    border-radius: 20px;
 }

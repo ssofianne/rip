@@ -22,5 +22,5 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', views.main_page, name='main_page'),
     path('card/<int:work_id>/', views.page2, name='page2'),
-    path('work/<int:work_id>/', views.page3, name='page3'),
+    path('application/<int:application_id>/', views.page3, name='page3'),
 ]
