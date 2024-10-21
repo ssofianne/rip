@@ -154,7 +154,6 @@ def page3(request, application_id):
 #     return render(request, 'index.html', {'cards': filtered_cards, 'type_of_work': type_of_work, 'work': work, 'count': count})
 def main_page(request):
      
-     work = next((work for work in works if work['id'] == 1), None)
 
      type_of_work = request.GET.get('type_of_work', '')
      all_works = Work.objects.filter(is_deleted=False)
@@ -177,7 +176,6 @@ def main_page(request):
         'works': all_works,
         'application': draft_application,
         'application_counter': application_size,
-        'work': work
     }
      
      return render(request, 'index.html', context)

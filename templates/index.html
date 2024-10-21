@@ -16,7 +16,7 @@
                     <p class="title_reserch">Общие работы</p>
                     <input class="work_types" type="text" name="type_of_work" placeholder="Вид работы" value="{{ request.GET.type_of_work }}">
                     <button class="reserch-button" type="submit">Поиск</button>
-                    <a href="{% url 'page3' application_id=work.id %}" class="request">
+                    <a href="{% url 'page3' application.id %}" class="request">
                         <img src="http://127.0.0.1:9000/fond-media/request.png" class="application">
                         <div class="sum-request">{{application_counter}}</div>
                     </a>                
@@ -32,7 +32,7 @@
                                 <p class="price">{{ work.price }} ₽/м²</p>
                             </div>
                             <div class="down">
-                                <a href="{% url 'page2' work_id=work.id %}" class="card-button">Подробнее </a>
+                                <a href="{% url 'page2' work.id %}" class="card-button">Подробнее </a>
                                 <a class="card-button">Добавить</a>
                             </div>
                         </div>
