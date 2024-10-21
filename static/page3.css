@@ -33,6 +33,7 @@
     padding-left: 10px;
     width: 100px;
     color: #3E80C2;
+    outline:none;
 }
 
 .title-works{
@@ -72,6 +73,7 @@
 }
 
 .place{
+    outline:none;
     border-radius: 20;
     font-size: 22px;
     background: #72A9E0;
@@ -87,6 +89,15 @@
     margin-left: 50px;
     margin-right: 10px;
     border: none;
+}
+
+.place::placeholder {
+    color: white;
+    opacity: 1;
+}
+
+input:focus::placeholder {
+    color: transparent;
 }
 
 .work_img{
@@ -133,4 +144,6 @@
     display: flex;
     align-items: center;
     border-radius: 20px;
+    border: none;
+    cursor: pointer;
 }

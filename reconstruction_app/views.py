@@ -54,7 +54,6 @@ def page3(request, application_id):
 
 
 def main_page(request):
-     
 
      type_of_work = request.GET.get('type_of_work', '')
      all_works = Work.objects.filter(is_deleted=False)
@@ -65,6 +64,9 @@ def main_page(request):
      default_user = User.objects.get(id=2) # id = 1 is superuser
      user_applications = Application.objects.filter(user=default_user)
      draft_application = user_applications.filter(status='draft').first()
+
+     if not draft_application:
+        draft_application = Application.objects.create(user=default_user, status='draft')
 
      spaces = Space.objects.filter(application=draft_application)
      application_size = 0
@@ -101,4 +103,14 @@ def add_work(request, work_id):
     
     Space.objects.create(application=draft_application, work=chosen_work)
 
+    return redirect('main_page')
+
+def application_delete(request, application_id):
+    application = Application.objects.get(id=application_id)
+    spaces_counter = Space.objects.filter(application=application).count()
+
+    with connection.cursor() as cursor:
+        cursor.execute("UPDATE application SET status = 'deleted', fundraising = %s WHERE id = %s", [spaces_counter, application_id])
+        print("Заявка удалена.")
+        
     return redirect('main_page')

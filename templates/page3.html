@@ -16,7 +16,10 @@
                 <input type="text" class="place" placeholder="Введите место" value="{{ place }}"/>
             </div>
             <div class="title-fundraising">Результат сбора средств: 
-                <p class="result-fundraising">{{fundraising}} ₽</p>
+                <p class="result-fundraising">{{fundraising}}</p>
+                {% if fundraising %}
+                    <p>₽</p>
+                {% endif %}
             </div>
         </div>
     <div class= "card_and_buttons">          
@@ -37,7 +40,14 @@
                     </div>  
             {% endfor %}
         </div>
-        <div class="delete_application_button">Очистить заявку</div>
+        {% if works %}
+            <form action="{% url 'application_delete' id %}" method="post">
+                {% csrf_token %}
+                <button class="delete_application_button" type="submit">Очистить заявку</button>
+            </form>
+        {% else %}    
+            <p>Вы еще не выбрали ни одну работу.</p>
+        {% endif %}
     </div>
     </div>
 </body>
