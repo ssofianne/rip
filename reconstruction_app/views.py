@@ -159,7 +159,7 @@ def main_page(request):
      all_works = Work.objects.filter(is_deleted=False)
 
      if type_of_work:
-         all_works = all_works.filter(title=type_of_work)
+      all_works = all_works.filter(title__istartswith=type_of_work)
 
      default_user = User.objects.get(id=2) # id = 1 is superuser
      user_applications = Application.objects.filter(user=default_user)
