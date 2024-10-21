@@ -33,7 +33,10 @@
                             </div>
                             <div class="down">
                                 <a href="{% url 'page2' work.id %}" class="card-button">Подробнее </a>
-                                <a class="card-button">Добавить</a>
+                                <form action="{% url 'add_work' work_id=work.id %}" method="post">
+                                    {% csrf_token %}
+                                    <button type="submit" class="card-button">Добавить</button>
+                                </form>
                             </div>
                         </div>
                     {% empty %}

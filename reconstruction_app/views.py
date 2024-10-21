@@ -80,3 +80,25 @@ def main_page(request):
     }
      
      return render(request, 'index.html', context)
+
+
+
+def add_work(request, work_id):
+    default_user = User.objects.get(id=2) # id = 1 is superuser
+    user_applications = Application.objects.filter(user=default_user)
+    draft_application = user_applications.filter(status='draft').first()
+
+    chosen_work = Work.objects.get(pk=work_id)
+
+    if not draft_application:
+        draft_application = Application.objects.create(user=default_user, status='draft')
+
+    spaces = Space.objects.filter(application=draft_application)
+
+    if spaces.filter(work=chosen_work):
+        print('Данная реконструкционная работа уже добавлена в заявку')
+        return redirect('main_page')
+    
+    Space.objects.create(application=draft_application, work=chosen_work)
+
+    return redirect('main_page')

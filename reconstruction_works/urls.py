@@ -23,4 +23,5 @@ urlpatterns = [
     path('', views.main_page, name='main_page'),
     path('card/<int:work_id>/', views.page2, name='page2'),
     path('application/<int:application_id>/', views.page3, name='page3'),
+    path('add_work/<int:work_id>', views.add_work, name='add_work'),
 ]

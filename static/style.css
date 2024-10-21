@@ -128,6 +128,8 @@ body{
     margin-bottom: 10px;
     text-decoration: none;
     font-weight: medium;
+    border: none;
+    cursor: pointer;
 }
 
 .down{
