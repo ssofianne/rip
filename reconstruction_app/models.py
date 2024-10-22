@@ -30,7 +30,7 @@ class Application(models.Model):
     moderator = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='moderator')
 
     place = models.CharField(max_length=100, null=True, blank=True)
-    fundraising = models.IntegerField(null=True, blank=True)
+    fundraising = models.IntegerField(null=True, blank=True, default= 56790)
     
     class Meta:
         db_table = 'application'

@@ -16,10 +16,10 @@
                 <input type="text" class="place" placeholder="Введите место" value="{{ place }}"/>
             </div>
             <div class="title-fundraising">Результат сбора средств: 
-                <p class="result-fundraising">{{fundraising}}</p>
-                {% if fundraising %}
-                    <p>₽</p>
-                {% endif %}
+                <p class="result-fundraising">{{fundraising }} ₽</p>
+                {% comment %} {% if fundraising %}
+                    <p>  ₽</p>
+                {% endif %} {% endcomment %}
             </div>
         </div>
     <div class= "card_and_buttons">          
