@@ -107,10 +107,9 @@ def add_work(request, work_id):
 
 def application_delete(request, application_id):
     application = Application.objects.get(id=application_id)
-    spaces_counter = Space.objects.filter(application=application).count()
 
     with connection.cursor() as cursor:
-        cursor.execute("UPDATE application SET status = 'deleted'", [spaces_counter, application_id])
+        cursor.execute("UPDATE application SET status = 'deleted' WHERE id = %s", [application_id])
         print("Заявка удалена.")
         
     return redirect('main_page')
