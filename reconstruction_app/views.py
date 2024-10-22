@@ -25,7 +25,7 @@ def page3(request, application_id):
     application = get_object_or_404(Application, pk=application_id)
 
     if application.status != 'draft':
-       raise Http404("Заявка не доступна для редактирования")
+       raise Http404("Такая заявка не найдена!")
 
     spaces = Space.objects.filter(application=application).order_by('space')
 
@@ -61,12 +61,12 @@ def main_page(request):
      if type_of_work:
       all_works = all_works.filter(title__istartswith=type_of_work)
 
-     default_user = User.objects.get(id=2) # id = 1 is superuser
+     default_user = User.objects.get(id=3) # id = 1 is superuser
      user_applications = Application.objects.filter(user=default_user)
      draft_application = user_applications.filter(status='draft').first()
 
-     if not draft_application:
-        draft_application = Application.objects.create(user=default_user, status='draft')
+    #  if not draft_application:
+    #     draft_application = Application.objects.create(user=default_user, status='draft')
 
      spaces = Space.objects.filter(application=draft_application)
      application_size = 0
@@ -86,7 +86,7 @@ def main_page(request):
 
 
 def add_work(request, work_id):
-    default_user = User.objects.get(id=2) # id = 1 is superuser
+    default_user = User.objects.get(id=3) # id = 1 is superuser
     user_applications = Application.objects.filter(user=default_user)
     draft_application = user_applications.filter(status='draft').first()
 
@@ -110,7 +110,7 @@ def application_delete(request, application_id):
     spaces_counter = Space.objects.filter(application=application).count()
 
     with connection.cursor() as cursor:
-        cursor.execute("UPDATE application SET status = 'deleted', fundraising = %s WHERE id = %s", [spaces_counter, application_id])
+        cursor.execute("UPDATE application SET status = 'deleted'", [spaces_counter, application_id])
         print("Заявка удалена.")
         
     return redirect('main_page')
