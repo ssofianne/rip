@@ -25,7 +25,7 @@ def page3(request, application_id):
     application = get_object_or_404(Application, pk=application_id)
 
     if application.status != 'draft':
-       raise Http404("Такая заявка не найдена!")
+       return render(request, 'error_404.html')
 
     spaces = Space.objects.filter(application=application).order_by('space')
 
