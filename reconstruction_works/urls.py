@@ -21,8 +21,8 @@ from reconstruction_app import views
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', views.main_page, name='main_page'),
-    path('card/<int:work_id>/', views.page2, name='page2'),
-    path('application/<int:application_id>/', views.page3, name='page3'),
+    path('work/<int:work_id>/', views.page2, name='page2'),
+    path('reconstruction/<int:reconstruction_id>/', views.page3, name='page3'),
     path('add_work/<int:work_id>', views.add_work, name='add_work'),
-    path('application_delete/<int:application_id>', views.application_delete, name='application_delete'),
+    path('reconstruction_delete/<int:reconstruction_id>', views.reconstruction_delete, name='reconstruction_delete'),
 ]

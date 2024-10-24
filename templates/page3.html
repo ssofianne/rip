@@ -41,7 +41,7 @@
             {% endfor %}
         </div>
         {% if works %}
-            <form action="{% url 'application_delete' id %}" method="post">
+            <form action="{% url 'reconstruction_delete' id %}" method="post">
                 {% csrf_token %}
                 <button class="delete_application_button" type="submit">Очистить заявку</button>
             </form>

@@ -5,7 +5,7 @@ from django.views.decorators.http import require_POST, require_GET
 from django.db import connection
 
 from django.contrib.auth.models import User
-from reconstruction_app.models import Work, Application, Space
+from reconstruction_app.models import Work, Reconstruction, Space
 
 
 def page2(request, work_id):
@@ -21,33 +21,33 @@ def page2(request, work_id):
     return render(request, 'page2.html', context)
 
 
-def page3(request, application_id):
-    application = get_object_or_404(Application, pk=application_id)
+def page3(request, reconstruction_id):
+    reconstruction = get_object_or_404(Reconstruction, pk=reconstruction_id)
 
-    if application.status != 'draft':
+    if reconstruction.status != 'draft':
        return render(request, 'error_404.html')
 
-    spaces = Space.objects.filter(application=application).order_by('space')
+    spaces = Space.objects.filter(reconstruction=reconstruction).order_by('space')
 
-    application_works = []
+    reconstruction_works = []
     index = 1
     for space in spaces:
       if space.work.is_deleted is False:
-        application_works.append({ 'work': space.work,'space': space.space, 'index': index })
+        reconstruction_works.append({ 'work': space.work,'space': space.space, 'index': index })
         index += 1
 
     place = ''
-    if application.place is not None:
-       place = application.place
+    if reconstruction.place is not None:
+       place = reconstruction.place
     fundraising = ''
-    if application.fundraising is not None:
-       fundraising = application.fundraising   
+    if reconstruction.fundraising is not None:
+       fundraising = reconstruction.fundraising   
 
     context = {
-      'id': application.id,
+      'id': reconstruction.id,
       'place': place,
       'fundraising':fundraising,
-      'works': application_works,
+      'works': reconstruction_works,
     }
 
     return render(request, 'page3.html', context)
@@ -62,23 +62,20 @@ def main_page(request):
       all_works = all_works.filter(title__istartswith=type_of_work)
 
      default_user = User.objects.get(id=3) # id = 1 is superuser
-     user_applications = Application.objects.filter(user=default_user)
-     draft_application = user_applications.filter(status='draft').first()
+     user_reconstructions = Reconstruction.objects.filter(user=default_user)
+     draft_reconstruction = user_reconstructions.filter(status='draft').first()
 
-    #  if not draft_application:
-    #     draft_application = Application.objects.create(user=default_user, status='draft')
-
-     spaces = Space.objects.filter(application=draft_application)
-     application_size = 0
+     spaces = Space.objects.filter(reconstruction=draft_reconstruction)
+     reconstruction_size = 0
 
      for space in spaces:
         if space.work.is_deleted is False:
-           application_size += 1    
+           reconstruction_size += 1    
 
      context = {
         'works': all_works,
-        'application': draft_application,
-        'application_counter': application_size,
+        'reconstruction': draft_reconstruction,
+        'reconstruction_counter': reconstruction_size,
     }
      
      return render(request, 'index.html', context)
@@ -87,29 +84,29 @@ def main_page(request):
 
 def add_work(request, work_id):
     default_user = User.objects.get(id=3) # id = 1 is superuser
-    user_applications = Application.objects.filter(user=default_user)
-    draft_application = user_applications.filter(status='draft').first()
+    user_reconstructions = Reconstruction.objects.filter(user=default_user)
+    draft_reconstruction = user_reconstructions.filter(status='draft').first()
 
     chosen_work = Work.objects.get(pk=work_id)
 
-    if not draft_application:
-        draft_application = Application.objects.create(user=default_user, status='draft')
+    if not draft_reconstruction:
+        draft_reconstruction = Reconstruction.objects.create(user=default_user, status='draft')
 
-    spaces = Space.objects.filter(application=draft_application)
+    spaces = Space.objects.filter(reconstruction=draft_reconstruction)
 
     if spaces.filter(work=chosen_work):
         print('Данная реконструкционная работа уже добавлена в заявку')
         return redirect('main_page')
     
-    Space.objects.create(application=draft_application, work=chosen_work)
+    Space.objects.create(reconstruction=draft_reconstruction, work=chosen_work)
 
     return redirect('main_page')
 
-def application_delete(request, application_id):
-    application = Application.objects.get(id=application_id)
+def reconstruction_delete(request, reconstruction_id):
+    reconstruction = Reconstruction.objects.get(id=reconstruction_id)
 
     with connection.cursor() as cursor:
-        cursor.execute("UPDATE application SET status = 'deleted' WHERE id = %s", [application_id])
+        cursor.execute("UPDATE reconstruction SET status = 'deleted' WHERE id = %s", [reconstruction_id])
         print("Заявка удалена.")
         
     return redirect('main_page')
