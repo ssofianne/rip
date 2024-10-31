@@ -12,10 +12,12 @@ class UserSerializer(serializers.ModelSerializer):
 class WorkSerializer(serializers.ModelSerializer):
     class Meta:
         model = Work
-        fields = ["pk", "title", "description", "price", "imageUrl", "is_deleted"]
+        fields = ["pk", "title", "description", "price", "imageUrl"]
 
 class ReconstructionSerializer(serializers.ModelSerializer):
+    user_name = serializers.CharField(source='user.username')
+    moderator_name = serializers.CharField(source='moderator.username', default='')
     class Meta:
         model = Reconstruction
-        fields = ["pk", "status", "creation_date", "apply_date", "end_date", "user", "moderator", "place", "fundraising"]
+        fields = ["pk", "status", "creation_date", "apply_date", "end_date", "user_name", "moderator_name", "place", "fundraising"]
         read_only_fields = ('fundraising',)

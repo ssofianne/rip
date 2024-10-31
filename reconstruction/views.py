@@ -112,7 +112,7 @@ class ReconstructionList(APIView):
             reconstructions = reconstructions.filter(apply_date__date=apply_date_datetime)
 
         serializer = self.serializer_class(reconstructions, many=True)
-        return Response({'reconstructions': serializer.data, 'creator': user_instance.username})
+        return Response({'reconstructions': serializer.data})
     
     def post(self, request, format=None):
         user_instance = user()
