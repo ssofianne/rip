@@ -3,6 +3,14 @@ from reconstruction.models import Work
 from reconstruction.models import Reconstruction
 from rest_framework import serializers
 from collections import OrderedDict
+from reconstruction.models import CustomUser
+
+class UserSerializer(serializers.ModelSerializer):
+    is_staff = serializers.BooleanField(default=False, required=False)
+    is_superuser = serializers.BooleanField(default=False, required=False)
+    class Meta:
+        model = CustomUser
+        fields = ['email', 'password', 'is_staff', 'is_superuser']
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:

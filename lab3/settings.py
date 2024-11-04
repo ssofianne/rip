@@ -150,4 +150,6 @@ REST_FRAMEWORK = {
 }
 
 # DEBUG = True
+# settings.py
+AUTH_USER_MODEL = 'reconstruction.CustomUser'
 
