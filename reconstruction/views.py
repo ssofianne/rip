@@ -15,6 +15,8 @@ from django.utils import timezone
 import random
 from unittest.mock import patch
 
+from drf_yasg.utils import swagger_auto_schema
+
 
 def user():
     try:
@@ -45,6 +47,7 @@ class WorkList(APIView):
 
         return Response({'works':serializer.data, 'draft_reconstruction_id':draft_reconstruction_id, 'count_works': count_works})
     
+    @swagger_auto_schema(request_body=WorkSerializer)
     def post(self, request, format=None):
         serializer = self.work_serializer(data=request.data)
         if serializer.is_valid():
@@ -61,6 +64,7 @@ class WorkDetail(APIView):
         serializer = self.serializer_work(work)
         return Response(serializer.data)
 
+    @swagger_auto_schema(request_body=WorkSerializer)
     def put(self, request, pk, format=None):
         work = get_object_or_404(self.work_class, pk=pk)
         serializer = self.serializer_work(work, data=request.data, partial=True)
@@ -69,6 +73,7 @@ class WorkDetail(APIView):
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+    @swagger_auto_schema(request_body=WorkSerializer)
     def post(self, request, pk, format=None):
         work = get_object_or_404(self.work_class, pk=pk)
 
@@ -114,6 +119,7 @@ class ReconstructionList(APIView):
         serializer = self.serializer_class(reconstructions, many=True)
         return Response({'reconstructions': serializer.data})
     
+    @swagger_auto_schema(request_body=WorkSerializer)
     def post(self, request, format=None):
         user_instance = user()
         draft_reconstruction, created = Reconstruction.objects.get_or_create(user=user_instance, status='draft', defaults={'creation_date': timezone.now})
@@ -149,6 +155,7 @@ class ReconstructionDetail(APIView):
 
         return Response({'reconstruction': serializer.data, 'works': works})
     
+    @swagger_auto_schema(request_body=WorkSerializer)
     def put(self, request, pk, format=None):
         reconstruction = get_object_or_404(self.reconstruction_class, pk=pk)
         serializer = self.reconstruction_serializer(reconstruction, data=request.data, partial=True)
@@ -168,6 +175,7 @@ class ReconstructionCreature(APIView):
     model_class = Reconstruction
     serializer_class = ReconstructionSerializer
 
+    @swagger_auto_schema(request_body=WorkSerializer)
     def put(self, request, pk, format=None):
         reconstruction = get_object_or_404(self.model_class, pk=pk)
 
@@ -194,6 +202,7 @@ class ReconstructionCompletedRejected(APIView):
     model_class = Reconstruction
     serializer_class = ReconstructionSerializer
 
+    @swagger_auto_schema(request_body=WorkSerializer)
     def put(self, request, pk, format=None):
          user_instance = user()
 
@@ -230,6 +239,7 @@ class ReconstructionSpace(APIView):
 
         return Response({"message": "Объем работы удален."}, status=status.HTTP_204_NO_CONTENT)
     
+    @swagger_auto_schema(request_body=WorkSerializer)
     def put(self, request, reconstruction_id=None, work_id=None, format=None):
         reconstruction = get_object_or_404(Reconstruction, pk=reconstruction_id, status='draft')
         work = get_object_or_404(Work, pk=work_id)
@@ -246,6 +256,7 @@ class ReconstructionSpace(APIView):
 class UserRegistration(APIView):
     serializer_class = UserSerializer
     
+    @swagger_auto_schema(request_body=WorkSerializer)
     def post(self, request, format=None):
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
@@ -257,6 +268,7 @@ class UserProfile(APIView):
     model_class = User
     serializer_class = UserSerializer
 
+    @swagger_auto_schema(request_body=WorkSerializer)
     def put(self, request, format=None):
         user_instance  = user()
         serializer = self.serializer_class(user_instance, data=request.data, partial=True)
@@ -266,6 +278,7 @@ class UserProfile(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 class UserLogin(APIView):
+    @swagger_auto_schema(request_body=WorkSerializer)
     def post(self, request, format=None):
         username = request.data.get("username")
         password = request.data.get("password")
@@ -280,6 +293,8 @@ class UserLogin(APIView):
             return Response({"error": "Неверное имя пользователя или пароль."}, status=status.HTTP_401_UNAUTHORIZED)
 
 class UserLogout(APIView):
+
+    @swagger_auto_schema(request_body=WorkSerializer)
     def post(self, request, format=None):
         logout(request)
         return Response({"message": "Выход успешен."}, status=status.HTTP_200_OK)

@@ -2,6 +2,7 @@ from django.contrib.auth.models import User
 from reconstruction.models import Work
 from reconstruction.models import Reconstruction
 from rest_framework import serializers
+from collections import OrderedDict
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -13,6 +14,13 @@ class WorkSerializer(serializers.ModelSerializer):
     class Meta:
         model = Work
         fields = ["pk", "title", "description", "price", "imageUrl"]
+
+        def get_fields(self):
+            new_fields = OrderedDict()
+            for name, field in super().get_fields().items():
+                field.required = False
+                new_fields[name] = field
+            return new_fields
 
 class ReconstructionSerializer(serializers.ModelSerializer):
     user_name = serializers.CharField(source='user.username')
