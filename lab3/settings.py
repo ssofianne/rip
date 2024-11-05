@@ -165,3 +165,8 @@ REST_FRAMEWORK = {
 # settings.py
 AUTH_USER_MODEL = 'reconstruction.CustomUser'
 
+# CSRF_COOKIE_SECURE = False
+# CSRF_TRUSTED_ORIGINS = ['http://localhost:8000', 'http://0.0.0.0:8000']
+
+REDIS_HOST = '127.0.0.1'
+REDIS_PORT = 6379

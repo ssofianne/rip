@@ -28,7 +28,7 @@ class Work(models.Model):
     title = models.CharField(max_length=100, null=False)
     description = models.TextField(default="У этого вида работ нет описания", null=False)
     price = models.IntegerField(default=5000, null=False)
-    imageUrl = models.URLField(null=True, blank=True)
+    imageurl = models.URLField(null=True, blank=True)
     is_deleted = models.BooleanField(default=False, null=False)
     class Meta:
         db_table = 'work'

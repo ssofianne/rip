@@ -21,7 +21,7 @@ class UserSerializer(serializers.ModelSerializer):
 class WorkSerializer(serializers.ModelSerializer):
     class Meta:
         model = Work
-        fields = ["pk", "title", "description", "price", "imageUrl"]
+        fields = ["pk", "title", "description", "price", "imageurl"]
 
         def get_fields(self):
             new_fields = OrderedDict()
