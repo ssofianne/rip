@@ -12,11 +12,11 @@ class UserSerializer(serializers.ModelSerializer):
         model = CustomUser
         fields = ['email', 'password', 'is_staff', 'is_superuser']
 
-class UserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ["id", "username", "password", "first_name", "last_name"]
-        extra_kwargs = {'password': {'write_only': True}}
+# class UserSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = User
+#         fields = ["id", "username", "password", "first_name", "last_name"]
+#         extra_kwargs = {'password': {'write_only': True}}
 
 class WorkSerializer(serializers.ModelSerializer):
     class Meta:

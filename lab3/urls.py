@@ -23,6 +23,7 @@ from django.urls import include, path
 from rest_framework import routers
 
 router = routers.DefaultRouter()
+router.register(r'user', views.UserViewSet, basename='user')
 
 schema_view = get_schema_view(
    openapi.Info(
@@ -38,10 +39,14 @@ schema_view = get_schema_view(
 )
 
 urlpatterns = [
-    path('', include(router.urls)),
-    path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     path('admin/', admin.site.urls),
+
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+
+    path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
+    # path('login/',  views.login_view, name='login'),
+    # path('logout/', views.logout_view, name='logout'),
+    path('api/', include(router.urls)),
 
     path(r'works/', views.WorkList.as_view(), name='works-list'),
     path(r'works/<int:pk>/', views.WorkDetail.as_view(), name='works-detail'),
