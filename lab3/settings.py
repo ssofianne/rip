@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
+from datetime import timedelta
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -41,6 +42,7 @@ INSTALLED_APPS = [
 
     # DRF
     'rest_framework',
+    'rest_framework_simplejwt',
 
     # Наше приложение
     'reconstruction',
@@ -152,6 +154,7 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.BasicAuthentication',
         'rest_framework.authentication.SessionAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
     ]
 }
 
@@ -162,11 +165,29 @@ REST_FRAMEWORK = {
 }
 
 # DEBUG = True
-# settings.py
 AUTH_USER_MODEL = 'reconstruction.CustomUser'
 
-# CSRF_COOKIE_SECURE = False
-# CSRF_TRUSTED_ORIGINS = ['http://localhost:8000', 'http://0.0.0.0:8000']
 
 REDIS_HOST = '127.0.0.1'
 REDIS_PORT = 6379
+
+JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
+    "ALGORITHM": "HS256",
+    "SIGNING_KEY": "MY_SIGNING_KEY_123",
+}
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://docker-redis-1",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient"
+        },
+    }
+}
+
+
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+SESSION_CACHE_ALIAS = "default"  # Обязательно для использования Redis сессий
+SESSION_COOKIE_NAME = "session_id"
