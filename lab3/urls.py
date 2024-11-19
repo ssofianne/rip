@@ -50,14 +50,14 @@ urlpatterns = [
     path('user/logout/', views.logout, name='logout'),
     path('', include(router.urls)),
 
+    path(r'works/', views.WorkList.as_view(), name='add-to-draft'),
     path(r'works/', views.WorkList.as_view(), name='works-list'),
     path(r'works/<int:pk>/', views.WorkDetail.as_view(), name='work-details'),
     path(r'works/add/', views.add_work, name='add_work'),
     path(r'works/<int:pk>/image/', views.add_image_work, name='add_image_work'),
     path(r'works/<int:pk>/', views.WorkDetail.as_view(), name='change_work_details'),
     path(r'works/<int:pk>/', views.WorkDetail.as_view(), name='delete_work'),
-    path(r'works/', views.WorkList.as_view(), name='add-to-draft'),
-
+    
     path(r'reconstructions/', views.ReconstructionList.as_view(), name='reconstructions-list'),
     path(r'reconstructions/<int:pk>/', views.ReconstructionDetail.as_view(), name='reconstructions-details'),
     path(r'reconstructions/<int:pk>/create/', views.ReconstructionCreature.as_view(), name='reconstruction-create'),

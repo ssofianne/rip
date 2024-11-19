@@ -78,49 +78,6 @@ class UserViewSet(viewsets.ModelViewSet):
             return Response({'status': 'Error', 'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
             
     
-# @authentication_classes([])
-# @swagger_auto_schema(
-#     operation_summary="Аутентификация", 
-#     method='post', 
-#     request_body=openapi.Schema(
-#         type=openapi.TYPE_OBJECT,
-#         properties={
-#             'email': openapi.Schema(type=openapi.TYPE_STRING),
-#             'password': openapi.Schema(type=openapi.TYPE_STRING),
-#         },
-#         required=['email', 'password']
-#     ),
-# )
-# @api_view(['Post'])
-# @csrf_exempt
-# @permission_classes([AllowAny])
-# def login_view(request):
-#     username = request.data["email"] 
-#     password = request.data["password"]
-#     user = authenticate(request, email=username, password=password)
-#     if user is not None:
-#         random_key = str(uuid.uuid4())
-#         session_storage.set(random_key, username)
-#         response = HttpResponse("{'status': 'ok'}")
-#         response.set_cookie("session_id", random_key) 
-#         return response
-#     else:
-#         return HttpResponse("{'status': 'error', 'error': 'login failed'}")
-    
-# @swagger_auto_schema(method='post')
-# def logout_view(request):
-#     if request.user.is_authenticated:
-#         session_id = request.COOKIES.get("session_id")
-#         if session_id:
-#             session_storage.delete(session_id)
-#             response = HttpResponse("{'status': 'ok'}")
-#             response.delete_cookie("session_id")
-#             return response
-#         else:
-#             return HttpResponse("{'status': 'error', 'error': 'no session found'}")
-#     return HttpResponse("{'error': 'Вы не авторизованы'}")
-
-# @swagger_auto_schema(operation_summary="Аутентификация", method='post', request_body=UserLoginSerializer)
 @authentication_classes([])
 @swagger_auto_schema(
     operation_summary="Аутентификация", 
@@ -160,10 +117,14 @@ def login(request):
 def logout(request):
     access_token = get_access_token(request)
 
-    if access_token not in cache:
-        cache.set(access_token, settings.JWT["ACCESS_TOKEN_LIFETIME"])
+    if access_token:  # Проверка на существование токена
+        session_storage.delete(access_token) # Удаляем токен из session_storage
+        response = Response({"message": "Пользователь вышел."}, status=status.HTTP_200_OK)
+        response.delete_cookie('access_token') # Удаляем cookie
+        return response
+    else:
+        return Response({"message": "Ошибка: Токен не найден."}, status=status.HTTP_400_BAD_REQUEST)
 
-    return Response({"message": "Пользователь вышел."},status=status.HTTP_200_OK)
     
 class WorkList(APIView):
     work_class = Work
@@ -184,7 +145,7 @@ class WorkList(APIView):
     ]
     )
     def get(self, request, format=None):
-
+        print('lalalalalal')
         works = self.work_class.objects.filter(is_deleted=False)  
         work_title = request.query_params.get('work_title')
         if work_title:
@@ -210,47 +171,35 @@ class WorkList(APIView):
                 'work_id': openapi.Schema(type=openapi.TYPE_INTEGER, description="ID работы"),
             },
         ),
-        responses={
-            201: openapi.Response(description="Работа успешно добавлена в заявку"),
-            400: openapi.Response(description="Ошибка: работа уже добавлена или пользователь не найден"),
-            401: openapi.Response(description="Ошибка: Необходима авторизация"),
-        }
     )
-    def post(self, request, format=None):
-        draft_reconstruction=None
+    def post(self, request, format=None): 
+        print('lalalalalal')
+        draft_reconstruction=None 
 
-        ssid = request.COOKIES.get("session_id")
-        if ssid is None: 
-            return Response({'error': 'нет сессион Айди'}, status=status.HTTP_400_BAD_REQUEST) 
-        user_id = session_storage.get(ssid) 
-        if user_id is None: 
-            return Response({'error': 'Нет юзера'}, status=status.HTTP_400_BAD_REQUEST) 
-        
-        user_instance = CustomUser.objects.filter(pk=user_id).first()
-        
-        if user_instance:
-            draft_reconstruction, created = Reconstruction.objects.get_or_create(user=user_instance, status='draft', defaults={'creation_date': timezone.now})
-        else:
-            return Response({'error': 'нет Юзера'}, status=status.HTTP_400_BAD_REQUEST)    
-
-        # if ssid:
-        #     user_id = session_storage.get(ssid)
-        #     user_instance = CustomUser.objects.filter(pk=user_id).first()
-        #     if user_instance:
-        #         draft_reconstruction, created = Reconstruction.objects.get_or_create(user=user_instance, status='draft', defaults={'creation_date': timezone.now})
-        #     else:
-        #         return Response({"error": "Пользователь не найден"}, status=status.HTTP_400_BAD_REQUEST)
-        # if not ssid:
-        #     return Response({"error": "Необходима авторизация"}, status=status.HTTP_401_UNAUTHORIZED)
-                    
-        work_id = request.data.get('work_id')
-        work = get_object_or_404(Work, pk=work_id, is_deleted=False)
-
-        if Space.objects.filter(reconstruction=draft_reconstruction, work=work):
-            return Response({"error": "Данная работа уже добавлена в заявку"}, status=status.HTTP_400_BAD_REQUEST)
-        
-        Space.objects.create(reconstruction=draft_reconstruction, work=work)
-
+        ssid = request.COOKIES.get("session_id") 
+        print(f"ssid = {ssid}") 
+        if ssid is None:  
+            return Response({'error': 'нет сессион Айди'}, status=status.HTTP_400_BAD_REQUEST)  
+        user_id = session_storage.get(ssid)  
+        print(f"user_id = {user_id}") 
+        if user_id is None:  
+            return Response({'error': 'Нет юзера'}, status=status.HTTP_400_BAD_REQUEST)  
+         
+        user_instance = CustomUser.objects.filter(pk=user_id).first() 
+        print(f"user_ins = {user_instance}") 
+        if user_instance: 
+            draft_reconstruction, created = Reconstruction.objects.get_or_create(user=user_instance, status='draft', defaults={'creation_date': timezone.now}) 
+        else: 
+            return Response({'error': 'нет Юзера'}, status=status.HTTP_400_BAD_REQUEST)     
+                     
+        work_id = request.data.get('work_id') 
+        work = get_object_or_404(Work, pk=work_id, is_deleted=False) 
+ 
+        if Space.objects.filter(reconstruction=draft_reconstruction, work=work): 
+            return Response({"error": "Данная работа уже добавлена в заявку"}, status=status.HTTP_400_BAD_REQUEST) 
+         
+        Space.objects.create(reconstruction=draft_reconstruction, work=work) 
+ 
         return Response({"message": "Работа успешно добавлена в заявку"}, status=status.HTTP_201_CREATED)
     
 @swagger_auto_schema(
@@ -261,6 +210,24 @@ class WorkList(APIView):
 @api_view(["Post"])
 @method_permission_classes([IsManager])
 def add_work(request, format=None):
+    print('lalallsalsalas')
+    ssid = request.COOKIES.get("session_id") 
+    if ssid is None: 
+        return Response({'error': 'нет сессион Айди'}, status=status.HTTP_400_BAD_REQUEST) 
+    
+    user_id = session_storage.get(ssid) 
+    
+    if user_id is None: 
+        return Response({'error': 'нет юзера'}, status=status.HTTP_400_BAD_REQUEST) 
+            
+    user_instance = CustomUser.objects.filter(pk=user_id).first() 
+    
+    if user_instance is None: 
+        return Response({'error': 'нет Юзера'}, status=status.HTTP_400_BAD_REQUEST) 
+            
+    if not (user_instance.is_staff or user_instance.is_superuser): 
+        return Response({'error': 'нет прав'}, status=status.HTTP_403_FORBIDDEN)
+    
     serializer = WorkSerializer(data=request.data)
     if serializer.is_valid():
         serializer.save()
