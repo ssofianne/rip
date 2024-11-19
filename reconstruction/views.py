@@ -36,6 +36,14 @@ import uuid
 
 session_storage = redis.StrictRedis(host=settings.REDIS_HOST, port=settings.REDIS_PORT)
 
+import logging
+logger = logging.getLogger(__name__)
+
+class LoginView(APIView):
+    def post(self, request):
+        logger.info(f"Request data: {request.data}")
+        logger.info(f"Request headers: {request.headers}")
+
 def method_permission_classes(classes):
     def decorator(func):
         def decorated_func(self, *args, **kwargs):
@@ -45,39 +53,31 @@ def method_permission_classes(classes):
         return decorated_func
     return decorator
 
-class UserViewSet(viewsets.ModelViewSet):
-    queryset = CustomUser.objects.all()
-    serializer_class = UserSerializer
-    model_class = CustomUser
-
-    def get_permissions(self):
-        if self.action == 'create' or self.action == 'profile':
-            return [AllowAny()]
-        return [IsAuthenticated()]
+class UserViewSet(viewsets.ModelViewSet): 
+    queryset = CustomUser.objects.all() 
+    serializer_class = UserSerializer 
+    model_class = CustomUser 
+ 
+    def get_permissions(self): 
+        if self.action == 'create' or self.action == 'profile': 
+            return [AllowAny()] 
+        return [IsAuthenticated()] 
+     
+    def create(self, request): 
+            if self.model_class.objects.filter(email=request.data['email']).exists(): 
+                return Response({'status': 'Exist'}, status=400) 
+             
+            serializer = self.serializer_class(data=request.data) 
+            if serializer.is_valid(): 
+                user = serializer.save() 
+                access_token = create_access_token(user.id) 
+                response = Response(serializer.data, status=201) 
+                response.set_cookie('access_token', access_token, httponly=True) 
+                return response 
+             
+            return Response({'status': 'Error', 'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+            
     
-    def create(self, request):
-        if self.model_class.objects.filter(email=request.data['email']).exists():
-            return Response({'status': 'Exist'}, status=400)
-        serializer = self.serializer_class(data=request.data)
-        if serializer.is_valid():
-            user = serializer.save()
-            # self.model_class.objects.create_user(
-            #     email=serializer.data['email'],
-            #     password=serializer.data['password'],
-            #     is_superuser=serializer.data['is_superuser'],
-            #     is_staff=serializer.data['is_staff']
-            # )
-            access_token = create_access_token(user.id)
-
-            serializer = UserSerializer(user)
-
-            response = Response(serializer.data, status=201)
-
-            response.set_cookie('access_token', access_token, httponly=True)
-            return response
-
-        return Response({'status': 'Error', 'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
-
 # @authentication_classes([])
 # @swagger_auto_schema(
 #     operation_summary="Аутентификация", 
@@ -136,31 +136,22 @@ class UserViewSet(viewsets.ModelViewSet):
 )
 @api_view(["POST"])
 @permission_classes([AllowAny])
-def login(request):
-    # serializer = UserLoginSerializer(data=request.data)
-
-    # if not serializer.is_valid():
-    #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+def login(request): 
     username = request.data["email"] 
-    password = request.data["password"]
-    user = authenticate(request, email=username, password=password)
-    if user is None:
-        return Response(status=status.HTTP_401_UNAUTHORIZED)
-    
-    access_token = create_access_token(user.id)
-
-    serializer = UserSerializer(user)
-
-    response_data = {
-        "user": serializer.data,
-        "access_token": access_token
-    }
-
-    response = Response(response_data, status=status.HTTP_200_OK)
-
-    response.set_cookie('access_token', access_token, httponly=True)
-
+    password = request.data["password"] 
+    user = authenticate(request, email=username, password=password) 
+    if user is None: 
+        return Response(status=status.HTTP_401_UNAUTHORIZED) 
+     
+    access_token = create_access_token(user.id) 
+    session_storage.setex(access_token, 86400, user.id) 
+    serializer = UserSerializer(user) 
+    response_data = { 
+        "user": serializer.data, 
+        "access_token": access_token 
+    } 
+    response = Response(response_data, status=status.HTTP_200_OK) 
+    response.set_cookie('access_token', access_token, httponly=True) 
     return response
 
 @swagger_auto_schema(operation_summary="Деавторизация", method='post')
@@ -183,6 +174,14 @@ class WorkList(APIView):
 
     @swagger_auto_schema(
         operation_summary="Список реконструкционных работ",
+        manual_parameters=[
+        openapi.Parameter(
+            'work_title',
+            openapi.IN_QUERY,
+            description="Вид работы",
+            type=openapi.TYPE_STRING,
+        )
+    ]
     )
     def get(self, request, format=None):
 
@@ -205,20 +204,44 @@ class WorkList(APIView):
     
     @swagger_auto_schema(
         operation_summary="Добавление в заявку-черновик",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'work_id': openapi.Schema(type=openapi.TYPE_INTEGER, description="ID работы"),
+            },
+        ),
+        responses={
+            201: openapi.Response(description="Работа успешно добавлена в заявку"),
+            400: openapi.Response(description="Ошибка: работа уже добавлена или пользователь не найден"),
+            401: openapi.Response(description="Ошибка: Необходима авторизация"),
+        }
     )
     def post(self, request, format=None):
         draft_reconstruction=None
 
         ssid = request.COOKIES.get("session_id")
-        if ssid:
-            user_id = session_storage.get(ssid)
-            user_instance = CustomUser.objects.filter(pk=user_id).first()
-            if user_instance:
-                draft_reconstruction, created = Reconstruction.objects.get_or_create(user=user_instance, status='draft', defaults={'creation_date': timezone.now})
-            else:
-                return Response({"error": "Пользователь не найден"}, status=status.HTTP_400_BAD_REQUEST)
-        if not ssid:
-            return Response({"error": "Необходима авторизация"}, status=status.HTTP_401_UNAUTHORIZED)
+        if ssid is None: 
+            return Response({'error': 'нет сессион Айди'}, status=status.HTTP_400_BAD_REQUEST) 
+        user_id = session_storage.get(ssid) 
+        if user_id is None: 
+            return Response({'error': 'Нет юзера'}, status=status.HTTP_400_BAD_REQUEST) 
+        
+        user_instance = CustomUser.objects.filter(pk=user_id).first()
+        
+        if user_instance:
+            draft_reconstruction, created = Reconstruction.objects.get_or_create(user=user_instance, status='draft', defaults={'creation_date': timezone.now})
+        else:
+            return Response({'error': 'нет Юзера'}, status=status.HTTP_400_BAD_REQUEST)    
+
+        # if ssid:
+        #     user_id = session_storage.get(ssid)
+        #     user_instance = CustomUser.objects.filter(pk=user_id).first()
+        #     if user_instance:
+        #         draft_reconstruction, created = Reconstruction.objects.get_or_create(user=user_instance, status='draft', defaults={'creation_date': timezone.now})
+        #     else:
+        #         return Response({"error": "Пользователь не найден"}, status=status.HTTP_400_BAD_REQUEST)
+        # if not ssid:
+        #     return Response({"error": "Необходима авторизация"}, status=status.HTTP_401_UNAUTHORIZED)
                     
         work_id = request.data.get('work_id')
         work = get_object_or_404(Work, pk=work_id, is_deleted=False)

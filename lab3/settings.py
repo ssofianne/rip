@@ -152,16 +152,14 @@ MINIO_USE_SSL = False
 # }
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
         'rest_framework.authentication.BasicAuthentication',
         'rest_framework.authentication.SessionAuthentication',
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ]
-}
 
-REST_FRAMEWORK = {
+    ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticatedOrReadOnly',
-    ]
+    ],
 }
 
 # DEBUG = True
@@ -174,7 +172,7 @@ REDIS_PORT = 6379
 JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
     "ALGORITHM": "HS256",
-    "SIGNING_KEY": "MY_SIGNING_KEY_123",
+    "SIGNING_KEY": "django-insecure-2e0dst)o!!ygt-ms9_sr^@lifcyfb1lrj2w5pvz6i_%&47$97b",
 }
 
 CACHES = {
