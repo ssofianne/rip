@@ -1,13 +1,14 @@
 from functools import cache
+from venv import logger
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from .jwt_helper import *
+from rest_framework import status
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
-
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
 
 from django.contrib.auth.models import User
 
@@ -95,6 +96,7 @@ def login(request):
      
     access_token = create_access_token(user.id) 
     session_storage.setex(access_token, 86400, user.id) 
+    print(f'saving_token {access_token} for {user.id}')
     serializer = UserSerializer(user) 
     response_data = { 
         "user": serializer.data, 
@@ -124,7 +126,8 @@ class WorkList(APIView):
     work_serializer = WorkSerializer
     reconstruction_class = Reconstruction
     reconstruction_serializer = ReconstructionSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    authentication_classes = [JWTAuthentication]
+    # permission_classes = [IsAuthenticatedOrReadOnly]
 
     @swagger_auto_schema(
         operation_summary="Список реконструкционных работ",
@@ -138,17 +141,29 @@ class WorkList(APIView):
     ]
     )
     def get(self, request, format=None):
-        print('lalalalalal')
         works = self.work_class.objects.filter(is_deleted=False)  
         work_title = request.query_params.get('work_title')
         if work_title:
             works = works.filter(title__icontains=work_title)      
         serializer = self.work_serializer(works, many=True)
 
-        user = request.user
+        access_token = request.COOKIES.get("access_token") 
+        print(access_token)
+        if access_token is None: 
+            return Response({'error': 'нет токена'}, status=status.HTTP_400_BAD_REQUEST) 
+        
+        user_id = session_storage.get(access_token) 
+        print(user_id)
+        if user_id is None: 
+            return Response({'error': 'нет пользователя'}, status=status.HTTP_400_BAD_REQUEST) 
+                
+        user_instance = CustomUser.objects.filter(pk=user_id).first() 
+        
+        user = user_instance
         draft_reconstruction_id = 0
         count_works = 0
         if user and user.is_authenticated:
+            print(f'пользователь аутентифицирован')
             draft_reconstruction = self.reconstruction_class.objects.filter(user=user, status='draft').first()
             if draft_reconstruction is not None:
                 draft_reconstruction_id = draft_reconstruction.id
@@ -166,24 +181,25 @@ class WorkList(APIView):
         ),
     )
     def post(self, request, format=None): 
-        print('lalalalalal')
+        print('lalalsklks')
         draft_reconstruction=None 
 
-        ssid = request.COOKIES.get("access_token") 
-        print(f"ssid = {ssid}") 
-        if ssid is None:  
-            return Response({'error': 'нет сессион Айди'}, status=status.HTTP_400_BAD_REQUEST)  
-        user_id = session_storage.get(ssid)  
-        print(f"user_id = {user_id}") 
-        if user_id is None:  
-            return Response({'error': 'Нет юзера'}, status=status.HTTP_400_BAD_REQUEST)  
-         
+        access_token = request.COOKIES.get("access_token") 
+        print(access_token)
+        if access_token is None: 
+            return Response({'error': 'нет токена'}, status=status.HTTP_400_BAD_REQUEST) 
+        
+        user_id = session_storage.get(access_token) 
+        print(user_id)
+        if user_id is None: 
+            return Response({'error': 'нет пользователя'}, status=status.HTTP_400_BAD_REQUEST) 
+                
         user_instance = CustomUser.objects.filter(pk=user_id).first() 
-        print(f"user_ins = {user_instance}") 
-        if user_instance: 
+        
+        if user_instance and user_instance.is_authenticated: 
             draft_reconstruction, created = Reconstruction.objects.get_or_create(user=user_instance, status='draft', defaults={'creation_date': timezone.now}) 
         else: 
-            return Response({'error': 'нет Юзера'}, status=status.HTTP_400_BAD_REQUEST)     
+            return Response({'error': 'нет пользователя'}, status=status.HTTP_400_BAD_REQUEST)     
                      
         work_id = request.data.get('work_id') 
         work = get_object_or_404(Work, pk=work_id, is_deleted=False) 
@@ -304,9 +320,10 @@ def add_image_work(reconstruction, pk, format=None):
 
 
 class ReconstructionList(APIView):
+    authentication_classes = [JWTAuthentication]
     model_class = Reconstruction
     serializer_class = ReconstructionSerializer
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
     
     @swagger_auto_schema(
         operation_summary="Список заявок на реконструкцию",
@@ -315,23 +332,27 @@ class ReconstructionList(APIView):
         print('dfjjofdfo')
         reconstructions = None
 
-        access_token = request.COOKIES.get("access_token") 
-        if access_token is None: 
-            return Response({'error': 'нет токена'}, status=status.HTTP_400_BAD_REQUEST) 
+        # access_token = request.COOKIES.get("access_token") 
+        # print(access_token)
+        # if not access_token:
+        #     return Response({'error': 'Необходима авторизация'}, status=401)
         
-        user_id = session_storage.get(access_token) 
-        
-        if user_id is None: 
-            return Response({'error': 'нет пользователя'}, status=status.HTTP_400_BAD_REQUEST) 
+        # user_id = session_storage.get(access_token) 
+        # print(user_id)
                 
-        user_instance = CustomUser.objects.filter(pk=user_id).first() 
+        # user_instance = CustomUser.objects.filter(pk=user_id).first() 
         
-        user = user_instance
-        if user.is_authenticated:
+        # user = user_instance
 
+        user = request.user
+        print(user)
+        if user and user.is_authenticated:
+            print(user)
             if user.is_staff:
+                print(f'стафф')
                 reconstructions = Reconstruction.objects.exclude(status__in=['deleted', 'draft'])
             else:
+                print(f'пользователь')
                 reconstructions = Reconstruction.objects.filter(user=user).exclude(status__in=['deleted', 'draft'])
 
             status = request.query_params.get('status')

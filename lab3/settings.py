@@ -141,18 +141,9 @@ AWS_SECRET_ACCESS_KEY = 'minio124'
 AWS_S3_ENDPOINT_URL = 'localhost:9000'
 MINIO_USE_SSL = False
 
-# REST_FRAMEWORK = {
-#     'DEFAULT_AUTHENTICATION_CLASSES': (
-#         'rest_framework.authentication.BasicAuthentication',
-#         # Или используйте TokenAuthentication
-#     ),
-#     'DEFAULT_PERMISSION_CLASSES': (
-#         'rest_framework.permissions.AllowAny',
-#     ),
-# }
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        # 'rest_framework_simplejwt.authentication.JWTAuthentication',
         'rest_framework.authentication.BasicAuthentication',
         'rest_framework.authentication.SessionAuthentication',
 
@@ -169,23 +160,23 @@ AUTH_USER_MODEL = 'reconstruction.CustomUser'
 REDIS_HOST = '127.0.0.1'
 REDIS_PORT = 6379
 
-JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
-    "ALGORITHM": "HS256",
-    "SIGNING_KEY": "django-insecure-2e0dst)o!!ygt-ms9_sr^@lifcyfb1lrj2w5pvz6i_%&47$97b",
-}
+# JWT = {
+#     "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
+#     "ALGORITHM": "HS256",
+#     "SIGNING_KEY": "django-insecure-2e0dst)o!!ygt-ms9_sr^@lifcyfb1lrj2w5pvz6i_%&47$97b",
+# }
 
-CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://docker-redis-1",
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient"
-        },
-    }
-}
+# CACHES = {
+#     "default": {
+#         "BACKEND": "django_redis.cache.RedisCache",
+#         "LOCATION": "redis://docker-redis-1",
+#         "OPTIONS": {
+#             "CLIENT_CLASS": "django_redis.client.DefaultClient"
+#         },
+#     }
+# }
 
 
-SESSION_ENGINE = "django.contrib.sessions.backends.cache"
-SESSION_CACHE_ALIAS = "default"  # Обязательно для использования Redis сессий
-SESSION_COOKIE_NAME = "session_id"
+# SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+# SESSION_CACHE_ALIAS = "default" 
+# SESSION_COOKIE_NAME = "session_id"
