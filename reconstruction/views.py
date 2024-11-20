@@ -36,13 +36,6 @@ import uuid
 
 session_storage = redis.StrictRedis(host=settings.REDIS_HOST, port=settings.REDIS_PORT)
 
-import logging
-logger = logging.getLogger(__name__)
-
-class LoginView(APIView):
-    def post(self, request):
-        logger.info(f"Request data: {request.data}")
-        logger.info(f"Request headers: {request.headers}")
 
 def method_permission_classes(classes):
     def decorator(func):
@@ -113,7 +106,7 @@ def login(request):
 
 @swagger_auto_schema(operation_summary="Деавторизация", method='post')
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+
 def logout(request):
     access_token = get_access_token(request)
 
@@ -176,7 +169,7 @@ class WorkList(APIView):
         print('lalalalalal')
         draft_reconstruction=None 
 
-        ssid = request.COOKIES.get("session_id") 
+        ssid = request.COOKIES.get("access_token") 
         print(f"ssid = {ssid}") 
         if ssid is None:  
             return Response({'error': 'нет сессион Айди'}, status=status.HTTP_400_BAD_REQUEST)  
@@ -210,8 +203,8 @@ class WorkList(APIView):
 @api_view(["Post"])
 @method_permission_classes([IsManager])
 def add_work(request, format=None):
-    print('lalallsalsalas')
-    ssid = request.COOKIES.get("session_id") 
+    print('pgfpgflgfgf')
+    ssid = request.COOKIES.get("access_token") 
     if ssid is None: 
         return Response({'error': 'нет сессион Айди'}, status=status.HTTP_400_BAD_REQUEST) 
     
@@ -225,8 +218,8 @@ def add_work(request, format=None):
     if user_instance is None: 
         return Response({'error': 'нет Юзера'}, status=status.HTTP_400_BAD_REQUEST) 
             
-    if not (user_instance.is_staff or user_instance.is_superuser): 
-        return Response({'error': 'нет прав'}, status=status.HTTP_403_FORBIDDEN)
+    # if not (user_instance.is_staff or user_instance.is_superuser): 
+    #     return Response({'error': 'нет прав'}, status=status.HTTP_403_FORBIDDEN)
     
     serializer = WorkSerializer(data=request.data)
     if serializer.is_valid():
@@ -266,13 +259,27 @@ class WorkDetail(APIView):
     )
     @method_permission_classes([IsManager])
     def delete(self, request, pk, format=None):
-        work = get_object_or_404(self.work_class, pk=pk)
-        work.is_deleted = True
-        work.save()
-        pic_result = delete_pic(pk)
-        if 'error' in pic_result.data:
-            return pic_result
-        return Response({"message": "Работа успешно удалена."}, status=status.HTTP_204_NO_CONTENT)
+
+        access_token = request.COOKIES.get("access_token") 
+        if access_token is None: 
+            return Response({'error': 'нет токена'}, status=status.HTTP_400_BAD_REQUEST) 
+        
+        user_id = session_storage.get(access_token) 
+        
+        if user_id is None: 
+            return Response({'error': 'нет пользователя'}, status=status.HTTP_400_BAD_REQUEST) 
+                
+        user_instance = CustomUser.objects.filter(pk=user_id).first() 
+        
+        if user_instance.is_staff:
+            work = get_object_or_404(self.work_class, pk=pk)
+            work.is_deleted = True
+            work.save()
+            pic_result = delete_pic(pk)
+            if 'error' in pic_result.data:
+                return pic_result
+            return Response({"message": "Работа успешно удалена."}, status=status.HTTP_204_NO_CONTENT)
+        else: Response(status=status.HTTP_403_FORBIDDEN)
 
 @swagger_auto_schema(
     method='post',
@@ -305,8 +312,21 @@ class ReconstructionList(APIView):
         operation_summary="Список заявок на реконструкцию",
     )
     def get(self, request, format=None):
+        print('dfjjofdfo')
         reconstructions = None
-        user = request.user
+
+        access_token = request.COOKIES.get("access_token") 
+        if access_token is None: 
+            return Response({'error': 'нет токена'}, status=status.HTTP_400_BAD_REQUEST) 
+        
+        user_id = session_storage.get(access_token) 
+        
+        if user_id is None: 
+            return Response({'error': 'нет пользователя'}, status=status.HTTP_400_BAD_REQUEST) 
+                
+        user_instance = CustomUser.objects.filter(pk=user_id).first() 
+        
+        user = user_instance
         if user.is_authenticated:
 
             if user.is_staff:

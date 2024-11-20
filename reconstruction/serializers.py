@@ -16,7 +16,6 @@ class UserSerializer(serializers.ModelSerializer):
             }
     def create(self, validated_data):
         password = validated_data.pop('password', None)
-        # Используем кастомный менеджер для создания пользователя
         user = CustomUser.objects.create_user(**validated_data, password=password)
         return user
 
@@ -24,11 +23,6 @@ class UserLoginSerializer(serializers.Serializer):
     email = serializers.CharField(required=True)
     password = serializers.CharField(required=True)
 
-# class UserSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = User
-#         fields = ["id", "username", "password", "first_name", "last_name"]
-#         extra_kwargs = {'password': {'write_only': True}}
 
 class WorkSerializer(serializers.ModelSerializer):
     class Meta:
