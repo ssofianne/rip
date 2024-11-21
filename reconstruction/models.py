@@ -57,7 +57,7 @@ class Reconstruction(models.Model):
     class Meta:
         db_table = 'reconstruction'
     def __str__(self):
-        return f"Reconstruction '{self.id}' by '{self.user.username}' created at '{self.creation_date}'"
+        return f"Reconstruction '{self.id}' by '{self.user.email}' created at '{self.creation_date}'"
 
     
 

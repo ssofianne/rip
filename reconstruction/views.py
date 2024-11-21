@@ -386,6 +386,14 @@ class ReconstructionDetail(APIView):
     
     @swagger_auto_schema(
         operation_summary="Изменение деталей заявки на реконструкцию",
+        manual_parameters=[
+        openapi.Parameter(
+            'place',
+            openapi.IN_QUERY,
+            description="Место",
+            type=openapi.TYPE_STRING,
+        )
+    ]
     )
     def put(self, request, pk, format=None):
         reconstruction = get_object_or_404(self.reconstruction_class, pk=pk)
