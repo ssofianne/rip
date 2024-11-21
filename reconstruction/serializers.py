@@ -33,12 +33,12 @@ class WorkSerializer(serializers.ModelSerializer):
             return new_fields
 
 class ReconstructionSerializer(serializers.ModelSerializer):
-    user_name = serializers.EmailField(source='user.email', read_only=True)
-    moderator_name = serializers.SerializerMethodField()
+    creator = serializers.EmailField(source='user.email', read_only=True)
+    moderator = serializers.SerializerMethodField()
 
     class Meta:
         model = Reconstruction
-        fields = ["pk", "status", "creation_date", "apply_date", "end_date", "user_name", "moderator_name", "place", "fundraising"]
+        fields = ["pk", "status", "creation_date", "apply_date", "end_date", "creator", "moderator", "place", "fundraising"]
         read_only_fields = ('fundraising',)
 
         def get_fields(self):
@@ -47,5 +47,8 @@ class ReconstructionSerializer(serializers.ModelSerializer):
                 field.required = False
                 new_fields[name] = field
             return new_fields
+        
+    def get_moderator(self, obj):
+        return obj.moderator.email if obj.moderator else None
 
 

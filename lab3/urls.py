@@ -51,20 +51,20 @@ urlpatterns = [
     path('login/',  views.login, name='login'),
     path('logout/', views.logout, name='logout'),
     
-    # path(r'works/', views.WorkList.as_view(), name='add-to-draft'),
+    path(r'reconstruction/draft/', views.ReconstructionDraft.as_view(), name='add-to-draft'),
 
     path(r'works/', views.WorkList.as_view(), name='work_list'), #СПИСОК РАБОТ
     path(r'works/', views.WorkList.as_view(), name='add_work'), #ДОБАВЛЕНИЕ НОВОЙ РАБОТЫ
 
     path(r'works/<int:pk>/image/', views.add_image_work, name='add_image_work'), #ДОБАВЛЕНИЕ ИЗОБРАЖЕНИЯ РАБОТЫ
 
-    path(r'works/<int:pk>/', views.WorkDetail.as_view(), name='work-details'), #ОДНА РАБОТА
-    path(r'works/<int:pk>/', views.WorkDetail.as_view(), name='change_work_details'), #ИЗМЕНЕНИЕ РАБОТЫ
-    path(r'works/<int:pk>/', views.WorkDetail.as_view(), name='delete_work'), #УДАЛЕНИЕ РАБОТЫ
+    path(r'works/<int:pk>/', views.get_work, name='work-details'), #ОДНА РАБОТА
+    path(r'works/<int:pk>/change/', views.put_work, name='change_work_details'), #ИЗМЕНЕНИЕ РАБОТЫ
+    path(r'works/<int:pk>/delete/', views.delete_work, name='delete_work'), #УДАЛЕНИЕ РАБОТЫ
     
     path(r'reconstructions/', views.ReconstructionList.as_view(), name='reconstructions-list'), #СПИСОК ЗАЯВОК
     path(r'reconstructions/<int:pk>/', views.ReconstructionDetail.as_view(), name='reconstructions-details'),
-    path(r'reconstructions/<int:pk>/create/', views.ReconstructionCreature.as_view(), name='reconstruction-create'),
+    path(r'reconstructions/<int:pk>/create/', views.ReconstructionCreature.as_view(), name='reconstruction-create'),#ФОРМИРОВАНИЕ ЗАЯВКИ
     path(r'reconstructions/<int:pk>/finish/', views.ReconstructionCompletedRejected.as_view(), name='reconstruction-complete-reject'),
     
     path(r'reconstructions/<int:reconstruction_id>/space/<int:work_id>/', views.ReconstructionSpace.as_view(), name='reconstruction-space'),
