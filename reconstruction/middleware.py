@@ -1,5 +1,6 @@
 from django.utils.deprecation import MiddlewareMixin
-from django.http import HttpRequest
+from django.http import HttpRequest, HttpResponseForbidden
+from django.middleware.csrf import get_token
 from reconstruction.models import CustomUser 
 from django.conf import settings
 import redis
@@ -9,6 +10,7 @@ session_storage = redis.StrictRedis(host=settings.REDIS_HOST, port=settings.REDI
 
 class RedisSessionMiddleware(MiddlewareMixin):
     def process_request(self, request: HttpRequest):
+
         session_id = request.COOKIES.get('session_id')
         if session_id:
             user_id = session_storage.get(session_id)

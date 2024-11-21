@@ -5,6 +5,7 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
 
+
 from django.contrib.auth.models import User
 
 from reconstruction.permissions import IsAdmin, IsManager
@@ -33,10 +34,8 @@ from django.http import HttpResponse
 import uuid
 
 
-import logging
-logger = logging.getLogger(__name__)
-
 session_storage = redis.StrictRedis(host=settings.REDIS_HOST, port=settings.REDIS_PORT)
+
 
 @swagger_auto_schema(
     operation_summary="Аутентификация", 
@@ -332,7 +331,6 @@ class ReconstructionList(APIView):
         ],
     )
     def get(self, request, format=None):
-        print('dfjjofdfo')
 
         reconstructions = None
         user_instance = request.user
@@ -344,18 +342,18 @@ class ReconstructionList(APIView):
                 reconstructions = self.model_class.objects.filter(user=user_instance).exclude(status__in=['deleted', 'draft'])
         
 
-        status = request.query_params.get('status')
-        apply_date = request.query_params.get('apply_date')
+            status = request.query_params.get('status')
+            apply_date = request.query_params.get('apply_date')
 
-        if status:
-            reconstructions = reconstructions.filter(status=status)
-        if apply_date:
-            apply_date_datetime = timezone.datetime.fromisoformat(apply_date)
-            reconstructions = reconstructions.filter(apply_date__date=apply_date_datetime)
+            if status:
+                reconstructions = reconstructions.filter(status=status)
+            if apply_date:
+                apply_date_datetime = timezone.datetime.fromisoformat(apply_date)
+                reconstructions = reconstructions.filter(apply_date__date=apply_date_datetime)
 
-        serializer = self.serializer_class(reconstructions, many=True)
+            serializer = self.serializer_class(reconstructions, many=True)
 
-        return Response({'reconstructions': serializer.data})
+            return Response({'reconstructions': serializer.data})
        
 
 
@@ -388,19 +386,11 @@ class ReconstructionDetail(APIView):
     
     @swagger_auto_schema(
         operation_summary="Изменение деталей заявки на реконструкцию",
-        manual_parameters=[
-        openapi.Parameter(
-            'place',
-            openapi.IN_QUERY,
-            description="Место осуществления работ",
-            type=openapi.TYPE_STRING,
-        )
-    ]
     )
     def put(self, request, pk, format=None):
         reconstruction = get_object_or_404(self.reconstruction_class, pk=pk)
         data = request.data.copy()
-        place = request.query_params.get('place')  # или request.GET.get('place')
+        place = request.query_params.get('place') 
         if place:
             data['place'] = place
 
@@ -461,27 +451,38 @@ class ReconstructionCreature(APIView):
 class ReconstructionCompletedRejected(APIView):
     model_class = Reconstruction
     serializer_class = ReconstructionSerializer
+    permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(
         operation_summary="Завершить/отклонить модератором",
     )
     def put(self, request, pk, format=None):
-        user = request.user
-        reconstruction = get_object_or_404(self.model_class, pk=pk)
-        if reconstruction.status != 'created':
-            return Response({'error': 'Заявка не может быть завершена до того, как будет сформирована'}, status=status.HTTP_400_BAD_REQUEST)
+        user_instance = request.user
+        if user_instance and user_instance.is_authenticated:
+            if user_instance.is_staff:
+                reconstruction = get_object_or_404(self.model_class, pk=pk)
+                if reconstruction.status != 'created':
+                    return Response({'error': 'Заявка не может быть завершена до того, как будет сформирована'}, status=status.HTTP_400_BAD_REQUEST)
 
-        reconstruction.fundraising = round(random.uniform(5000, 500000), 2)
+                reconstruction.fundraising = round(random.uniform(5000, 500000), 2)
 
-        reconstruction.status = request.data['status']
-        reconstruction.moderator = user
-        reconstruction.end_date = timezone.now().isoformat()
+                reconstruction.status = request.data['status']
+                reconstruction.moderator = user_instance
+                reconstruction.end_date = timezone.now().isoformat()
 
-        reconstruction.save()
-        serializer = self.serializer_class(reconstruction)
+                reconstruction.save()
+                serializer = self.serializer_class(reconstruction)
 
-        return Response(serializer.data)
+                return Response(serializer.data)
+            else: return Response({'message':'Заявку может завершить только модератор'}, status=status.HTTP_403_FORBIDDEN)
+        else: return Response({'message':'Вы не авторизованы'}, status=status.HTTP_401_UNAUTHORIZED)
+
+
+
+#------------------------------УДАЛИТЬ ИЗ ЗАЯВКИ, ИЗМЕНИТЬ ОБЪЕМ----------------------------------------------------------------------
     
+
+
 class ReconstructionSpace(APIView):
 
     @swagger_auto_schema(
@@ -493,17 +494,25 @@ class ReconstructionSpace(APIView):
         space_delete = get_object_or_404(Space, reconstruction=reconstruction, work=work)
         space_delete.delete()
 
-        return Response({"message": "Объем работы удален."}, status=status.HTTP_204_NO_CONTENT)
+        return Response({"message": "Работа успешно удалена из заявки."}, status=status.HTTP_204_NO_CONTENT)
     
     @swagger_auto_schema(
-        operation_summary="Изменить объем работы в заявке на реконструкцию"
+        operation_summary="Изменить объем работы в заявке на реконструкцию",
+        manual_parameters=[
+        openapi.Parameter(
+            'space',
+            openapi.IN_QUERY,
+            description="Объем работы",
+            type=openapi.TYPE_STRING,
+        )
+    ]
     )
     def put(self, request, reconstruction_id=None, work_id=None, format=None):
         reconstruction = get_object_or_404(Reconstruction, pk=reconstruction_id, status='draft')
         work = get_object_or_404(Work, pk=work_id)
 
         change_space = get_object_or_404(Space, reconstruction=reconstruction, work=work)
-        new_space_value = request.data.get('space')
+        new_space_value = request.query_params.get('space')
 
         if new_space_value is not None:
             change_space.space = new_space_value
