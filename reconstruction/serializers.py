@@ -14,14 +14,10 @@ class UserSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'password': {'write_only': True}
             }
-    def create(self, validated_data):
-        password = validated_data.pop('password', None)
-        user = CustomUser.objects.create_user(**validated_data, password=password)
-        return user
-
-class UserLoginSerializer(serializers.Serializer):
-    email = serializers.CharField(required=True)
-    password = serializers.CharField(required=True)
+    # def create(self, validated_data):
+    #     password = validated_data.pop('password', None)
+    #     user = CustomUser.objects.create_user(**validated_data, password=password)
+    #     return user
 
 
 class WorkSerializer(serializers.ModelSerializer):
@@ -39,9 +35,17 @@ class WorkSerializer(serializers.ModelSerializer):
 class ReconstructionSerializer(serializers.ModelSerializer):
     user_name = serializers.EmailField(source='user.email', read_only=True)
     moderator_name = serializers.SerializerMethodField()
+
     class Meta:
         model = Reconstruction
         fields = ["pk", "status", "creation_date", "apply_date", "end_date", "user_name", "moderator_name", "place", "fundraising"]
         read_only_fields = ('fundraising',)
+
+        def get_fields(self):
+            new_fields = OrderedDict()
+            for name, field in super().get_fields().items():
+                field.required = False
+                new_fields[name] = field
+            return new_fields
 
 

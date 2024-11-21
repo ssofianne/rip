@@ -1,26 +1,21 @@
-from django.middleware.csrf import CsrfViewMiddleware
-from django.http import HttpResponse
-from .views import session_storage
-from .models import CustomUser
+from django.utils.deprecation import MiddlewareMixin
+from django.http import HttpRequest
+from reconstruction.models import CustomUser 
+from django.conf import settings
+import redis
 
+# Подключение к Redis
+session_storage = redis.StrictRedis(host=settings.REDIS_HOST, port=settings.REDIS_PORT)
 
-def session_middleware(get_response):
-    def middleware(request):
-
-        csrf_middleware = CsrfViewMiddleware(get_response)
-
-        ssid = request.COOKIES.get("session_id")
-        if ssid and session_storage.exists(ssid):
-            email = session_storage.get(ssid).decode("utf-8")
-            request.user = CustomUser.objects.get(email=email)
+class RedisSessionMiddleware(MiddlewareMixin):
+    def process_request(self, request: HttpRequest):
+        session_id = request.COOKIES.get('session_id')
+        if session_id:
+            user_id = session_storage.get(session_id)
+            if user_id:
+                try:
+                    request.user = CustomUser.objects.get(pk=int(user_id))
+                except CustomUser.DoesNotExist:
+                    request.user = None
         else:
             request.user = None
-
-        response = csrf_middleware.process_view(request, None, (), {})
-
-        if response is None:  # Если CSRF проверка прошла, продолжаем обработку запроса
-            response = get_response(request)
-
-        return response
-
-    return middleware

@@ -1,10 +1,5 @@
-from functools import cache
-from venv import logger
-from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
-from .jwt_helper import *
 from rest_framework import status
-from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
@@ -14,7 +9,7 @@ from django.contrib.auth.models import User
 
 from reconstruction.permissions import IsAdmin, IsManager
 from .minio import add_pic, delete_pic
-from reconstruction.serializers import WorkSerializer, ReconstructionSerializer, UserSerializer, UserLoginSerializer
+from reconstruction.serializers import WorkSerializer, ReconstructionSerializer, UserSerializer
 from reconstruction.models import CustomUser, Work, Reconstruction, Space
 
 from rest_framework.views import APIView
@@ -24,6 +19,8 @@ import random
 
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
+
+from django.contrib.auth import logout as django_logout
 
 from rest_framework.response import Response
 from rest_framework import status, viewsets, permissions
@@ -35,44 +32,12 @@ import redis
 from django.http import HttpResponse
 import uuid
 
+
+import logging
+logger = logging.getLogger(__name__)
+
 session_storage = redis.StrictRedis(host=settings.REDIS_HOST, port=settings.REDIS_PORT)
 
-
-def method_permission_classes(classes):
-    def decorator(func):
-        def decorated_func(self, *args, **kwargs):
-            self.permission_classes = classes        
-            self.check_permissions(self.request)
-            return func(self, *args, **kwargs)
-        return decorated_func
-    return decorator
-
-class UserViewSet(viewsets.ModelViewSet): 
-    queryset = CustomUser.objects.all() 
-    serializer_class = UserSerializer 
-    model_class = CustomUser 
- 
-    def get_permissions(self): 
-        if self.action == 'create' or self.action == 'profile': 
-            return [AllowAny()] 
-        return [IsAuthenticated()] 
-     
-    def create(self, request): 
-            if self.model_class.objects.filter(email=request.data['email']).exists(): 
-                return Response({'status': 'Exist'}, status=400) 
-             
-            serializer = self.serializer_class(data=request.data) 
-            if serializer.is_valid(): 
-                user = serializer.save() 
-                access_token = create_access_token(user.id) 
-                response = Response(serializer.data, status=201) 
-                response.set_cookie('access_token', access_token, httponly=True) 
-                return response 
-             
-            return Response({'status': 'Error', 'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
-            
-    
-@authentication_classes([])
 @swagger_auto_schema(
     operation_summary="Аутентификация", 
     method='post', 
@@ -87,47 +52,94 @@ class UserViewSet(viewsets.ModelViewSet):
 )
 @api_view(["POST"])
 @permission_classes([AllowAny])
+@authentication_classes([])
 def login(request): 
-    username = request.data["email"] 
+    email = request.data["email"] 
     password = request.data["password"] 
-    user = authenticate(request, email=username, password=password) 
-    if user is None: 
-        return Response(status=status.HTTP_401_UNAUTHORIZED) 
-     
-    access_token = create_access_token(user.id) 
-    session_storage.setex(access_token, 86400, user.id) 
-    print(f'saving_token {access_token} for {user.id}')
-    serializer = UserSerializer(user) 
-    response_data = { 
-        "user": serializer.data, 
-        "access_token": access_token 
-    } 
-    response = Response(response_data, status=status.HTTP_200_OK) 
-    response.set_cookie('access_token', access_token, httponly=True) 
-    return response
+    user = authenticate(request, email=email, password=password) 
+    if user is not None:
+        random_key = str(uuid.uuid4())
+        session_storage.set(random_key, user.pk)
 
-@swagger_auto_schema(operation_summary="Деавторизация", method='post')
-@api_view(["POST"])
+        response = HttpResponse("{'status': 'ok'}")
+        response.set_cookie("session_id", random_key)
 
-def logout(request):
-    access_token = get_access_token(request)
-
-    if access_token:  # Проверка на существование токена
-        session_storage.delete(access_token) # Удаляем токен из session_storage
-        response = Response({"message": "Пользователь вышел."}, status=status.HTTP_200_OK)
-        response.delete_cookie('access_token') # Удаляем cookie
         return response
     else:
-        return Response({"message": "Ошибка: Токен не найден."}, status=status.HTTP_400_BAD_REQUEST)
+        return HttpResponse("{'status': 'error', 'error': 'Неверный логин или пароль'}")
 
+@swagger_auto_schema(
+    method='post',
+    operation_summary="Деавторизация"
+)
+@api_view(['POST'])
+def logout(request):
+
+    django_logout(request._request)
+
+    return Response({'message': 'Вы успешно вышли из аккаунта'}, status=status.HTTP_204_NO_CONTENT)
+
+class UserViewSet(viewsets.ModelViewSet): 
+    """
+    Класс, описывающий методы работы с пользователями
+    Осуществляет связь с таблицей пользователей в базе данных
+    """
+    queryset = CustomUser.objects.all() 
+    serializer_class = UserSerializer 
+    model_class = CustomUser 
+ 
+    def get_permissions(self): 
+        if self.action in ['create']:
+            permission_classes = [AllowAny]
+        elif self.action in ['list']:
+            permission_classes = [IsAdmin | IsManager]
+        else:
+            permission_classes = [IsAdmin]
+        return [permission() for permission in permission_classes] 
+     
+    @swagger_auto_schema(
+        operation_summary="Регистрация"
+    )
+    def create(self, request):
+        """
+        Функция регистрации новых пользователей
+        Если пользователя c указанным в request email ещё нет, в БД будет добавлен новый пользователь.
+        """
+        if self.model_class.objects.filter(email=request.data['email']).exists():
+            return Response({'status': 'Exist'}, status=400)
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            print(serializer.data)
+            self.model_class.objects.create_user(email=serializer.data['email'],
+                                     password=serializer.data['password'],
+                                     is_superuser=serializer.data['is_superuser'],
+                                     is_staff=serializer.data['is_staff'])
+            return Response({'status': 'Success'}, status=200)
+        return Response({'status': 'Error', 'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+            
+def method_permission_classes(classes):
+    def decorator(func):
+        def decorated_func(self, *args, **kwargs):
+            self.permission_classes = classes        
+            self.check_permissions(self.request)
+            return func(self, *args, **kwargs)
+        return decorated_func
+    return decorator
     
+
+
+
+# ------------------------------------МЕТОДЫ СПИСОК РАБОТ И ДОБАВЛЕНИЕ НОВОЙ РАБОТЫ------------------------------------------
+
+
+  
 class WorkList(APIView):
     work_class = Work
     work_serializer = WorkSerializer
     reconstruction_class = Reconstruction
     reconstruction_serializer = ReconstructionSerializer
-    authentication_classes = [JWTAuthentication]
-    # permission_classes = [IsAuthenticatedOrReadOnly]
+
+
 
     @swagger_auto_schema(
         operation_summary="Список реконструкционных работ",
@@ -147,155 +159,49 @@ class WorkList(APIView):
             works = works.filter(title__icontains=work_title)      
         serializer = self.work_serializer(works, many=True)
 
-        access_token = request.COOKIES.get("access_token") 
-        print(access_token)
-        if access_token is None: 
-            return Response({'error': 'нет токена'}, status=status.HTTP_400_BAD_REQUEST) 
-        
-        user_id = session_storage.get(access_token) 
-        print(user_id)
-        if user_id is None: 
-            return Response({'error': 'нет пользователя'}, status=status.HTTP_400_BAD_REQUEST) 
-                
-        user_instance = CustomUser.objects.filter(pk=user_id).first() 
-        
-        user = user_instance
+        draft_reconstruction = None
+        ssid = request.COOKIES["session_id"]
+        if ssid is not None:
+            user_id = session_storage.get(ssid)
+            user_instance = CustomUser.objects.filter(pk=user_id).first()
+            if user_instance is not None:
+                draft_reconstruction = self.reconstruction_class.objects.filter(user=user_instance, status='draft').first()
+
         draft_reconstruction_id = 0
         count_works = 0
-        if user and user.is_authenticated:
-            print(f'пользователь аутентифицирован')
-            draft_reconstruction = self.reconstruction_class.objects.filter(user=user, status='draft').first()
-            if draft_reconstruction is not None:
-                draft_reconstruction_id = draft_reconstruction.id
-                count_works = Space.objects.filter(reconstruction=draft_reconstruction).count()
+        if draft_reconstruction is not None:
+            draft_reconstruction_id = draft_reconstruction.id
+            count_works = len(Space.objects.filter(reconstruction=draft_reconstruction))
 
-        return Response({'works':serializer.data, 'draft_reconstruction_id':draft_reconstruction_id, 'count_works': count_works})
-    
+        return Response({'reconstructions': serializer.data, 'draft_reconstruction_id': draft_reconstruction_id, 'count_of_works': count_works})
+
+
+
+
     @swagger_auto_schema(
-        operation_summary="Добавление в заявку-черновик",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'work_id': openapi.Schema(type=openapi.TYPE_INTEGER, description="ID работы"),
-            },
-        ),
+        request_body=WorkSerializer,
+        operation_summary="Добавление работы", 
     )
-    def post(self, request, format=None): 
-        print('lalalsklks')
-        draft_reconstruction=None 
-
-        access_token = request.COOKIES.get("access_token") 
-        print(access_token)
-        if access_token is None: 
-            return Response({'error': 'нет токена'}, status=status.HTTP_400_BAD_REQUEST) 
-        
-        user_id = session_storage.get(access_token) 
-        print(user_id)
-        if user_id is None: 
-            return Response({'error': 'нет пользователя'}, status=status.HTTP_400_BAD_REQUEST) 
+    def post(self, request, format=None):
+        ssid = request.COOKIES["session_id"]
+        if ssid is not None:
+            user_id = session_storage.get(ssid)
+            user_instance = CustomUser.objects.filter(pk=user_id).first()
+            if user_instance and user_instance.is_staff:
                 
-        user_instance = CustomUser.objects.filter(pk=user_id).first() 
-        
-        if user_instance and user_instance.is_authenticated: 
-            draft_reconstruction, created = Reconstruction.objects.get_or_create(user=user_instance, status='draft', defaults={'creation_date': timezone.now}) 
-        else: 
-            return Response({'error': 'нет пользователя'}, status=status.HTTP_400_BAD_REQUEST)     
-                     
-        work_id = request.data.get('work_id') 
-        work = get_object_or_404(Work, pk=work_id, is_deleted=False) 
- 
-        if Space.objects.filter(reconstruction=draft_reconstruction, work=work): 
-            return Response({"error": "Данная работа уже добавлена в заявку"}, status=status.HTTP_400_BAD_REQUEST) 
-         
-        Space.objects.create(reconstruction=draft_reconstruction, work=work) 
- 
-        return Response({"message": "Работа успешно добавлена в заявку"}, status=status.HTTP_201_CREATED)
+                serializer = self.work_class(data=request.data)
+                if serializer.is_valid():
+                    serializer.save()
+                    return Response(serializer.data, status=status.HTTP_201_CREATED)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)  
     
-@swagger_auto_schema(
-    request_body=WorkSerializer,
-    operation_summary="Добавление работы", 
-    method='post',
-)
-@api_view(["Post"])
-@method_permission_classes([IsManager])
-def add_work(request, format=None):
-    print('pgfpgflgfgf')
-    ssid = request.COOKIES.get("access_token") 
-    if ssid is None: 
-        return Response({'error': 'нет сессион Айди'}, status=status.HTTP_400_BAD_REQUEST) 
-    
-    user_id = session_storage.get(ssid) 
-    
-    if user_id is None: 
-        return Response({'error': 'нет юзера'}, status=status.HTTP_400_BAD_REQUEST) 
-            
-    user_instance = CustomUser.objects.filter(pk=user_id).first() 
-    
-    if user_instance is None: 
-        return Response({'error': 'нет Юзера'}, status=status.HTTP_400_BAD_REQUEST) 
-            
-    # if not (user_instance.is_staff or user_instance.is_superuser): 
-    #     return Response({'error': 'нет прав'}, status=status.HTTP_403_FORBIDDEN)
-    
-    serializer = WorkSerializer(data=request.data)
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class WorkDetail(APIView):
-    work_class = Work
-    work_serializer = WorkSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
-    
-    @swagger_auto_schema(
-        operation_summary="Одна работа"
-    )
-    def get(self, request, pk, format=None):
-        work = get_object_or_404(self.work_class, pk=pk)
-        serializer = self.work_serializer(work)
-        return Response(serializer.data)
 
-    @swagger_auto_schema(
-        operation_summary="Изменение работы",
-        request_body=WorkSerializer
-    )
-    @method_permission_classes([IsManager])
-    def put(self, request, pk, format=None):
-        work = get_object_or_404(self.work_class, pk=pk)
-        serializer = self.work_serializer(work, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    # --------------------МЕТОД ДОБАВЛЕНИЯ ИЗОБРАЖЕНИЯ ДЛЯ РАБОТЫ -------------------------------------
 
-    @swagger_auto_schema(
-        operation_summary="Удаление работы",
-    )
-    @method_permission_classes([IsManager])
-    def delete(self, request, pk, format=None):
 
-        access_token = request.COOKIES.get("access_token") 
-        if access_token is None: 
-            return Response({'error': 'нет токена'}, status=status.HTTP_400_BAD_REQUEST) 
-        
-        user_id = session_storage.get(access_token) 
-        
-        if user_id is None: 
-            return Response({'error': 'нет пользователя'}, status=status.HTTP_400_BAD_REQUEST) 
-                
-        user_instance = CustomUser.objects.filter(pk=user_id).first() 
-        
-        if user_instance.is_staff:
-            work = get_object_or_404(self.work_class, pk=pk)
-            work.is_deleted = True
-            work.save()
-            pic_result = delete_pic(pk)
-            if 'error' in pic_result.data:
-                return pic_result
-            return Response({"message": "Работа успешно удалена."}, status=status.HTTP_204_NO_CONTENT)
-        else: Response(status=status.HTTP_403_FORBIDDEN)
+
 
 @swagger_auto_schema(
     method='post',
@@ -319,55 +225,167 @@ def add_image_work(reconstruction, pk, format=None):
     return Response({"message": "Изображение успешно обновлено."}, status=status.HTTP_200_OK)
 
 
+
+
+
+
+    # @swagger_auto_schema(
+    #     operation_summary="Добавление в заявку-черновик",
+    #     request_body=openapi.Schema(
+    #         type=openapi.TYPE_OBJECT,
+    #         properties={
+    #             'work_id': openapi.Schema(type=openapi.TYPE_INTEGER, description="ID работы"),
+    #         },
+    #     ),
+    # )
+    # def post(self, request, format=None): 
+    #     print('lalalsklks')
+    #     draft_reconstruction=None 
+
+    #     access_token = request.COOKIES.get("access_token") 
+    #     print(access_token)
+    #     if access_token is None: 
+    #         return Response({'error': 'нет токена'}, status=status.HTTP_400_BAD_REQUEST) 
+        
+    #     user_id = session_storage.get(access_token) 
+    #     print(user_id)
+    #     if user_id is None: 
+    #         return Response({'error': 'нет пользователя'}, status=status.HTTP_400_BAD_REQUEST) 
+                
+    #     user_instance = CustomUser.objects.filter(pk=user_id).first() 
+        
+    #     if user_instance and user_instance.is_authenticated: 
+    #         draft_reconstruction, created = Reconstruction.objects.get_or_create(user=user_instance, status='draft', defaults={'creation_date': timezone.now}) 
+    #     else: 
+    #         return Response({'error': 'нет пользователя'}, status=status.HTTP_400_BAD_REQUEST)     
+                     
+    #     work_id = request.data.get('work_id') 
+    #     work = get_object_or_404(Work, pk=work_id, is_deleted=False) 
+ 
+    #     if Space.objects.filter(reconstruction=draft_reconstruction, work=work): 
+    #         return Response({"error": "Данная работа уже добавлена в заявку"}, status=status.HTTP_400_BAD_REQUEST) 
+         
+    #     Space.objects.create(reconstruction=draft_reconstruction, work=work) 
+ 
+    #     return Response({"message": "Работа успешно добавлена в заявку"}, status=status.HTTP_201_CREATED)
+    
+
+
+
+
+
+# -----------------------МЕТОДЫ ОДНА РАБОТА, ИЗМЕНЕНИЕ РАБОТЫ, УДАЛЕНИЕ РАБОТЫ--------------------------------------------
+
+
+class WorkDetail(APIView):
+    work_class = Work
+    work_serializer = WorkSerializer
+    
+    @swagger_auto_schema(
+        operation_summary="Одна работа"
+    )
+    def get(self, request, pk, format=None):
+        work = get_object_or_404(self.work_class, pk=pk)
+        serializer = self.work_serializer(work)
+        return Response(serializer.data)
+
+
+
+
+
+    @swagger_auto_schema(
+        operation_summary="Изменение работы",
+        request_body=WorkSerializer
+    )
+    @method_permission_classes([IsManager])
+    def put(self, request, pk, format=None):
+        work = get_object_or_404(self.work_class, pk=pk)
+        serializer = self.work_serializer(work, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+
+
+    @swagger_auto_schema(
+        operation_summary="Удаление работы",
+    )
+    @method_permission_classes([IsManager])
+    def delete(self, request, pk, format=None):
+
+        work = get_object_or_404(self.work_class, pk=pk)
+        work.is_deleted = True
+        work.save()
+        pic_result = delete_pic(pk)
+        if 'error' in pic_result.data:
+            return pic_result
+        return Response({"message": "Работа успешно удалена."}, status=status.HTTP_204_NO_CONTENT)
+    
+
+
+
+
+    # -------------------------------------------СПИСОК ЗАЯВОК------------------------------------------------
+
+
+
+
 class ReconstructionList(APIView):
-    authentication_classes = [JWTAuthentication]
     model_class = Reconstruction
     serializer_class = ReconstructionSerializer
-    # permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
     
     @swagger_auto_schema(
         operation_summary="Список заявок на реконструкцию",
+        manual_parameters=[
+            openapi.Parameter(
+                'status',
+                openapi.IN_QUERY,
+                type=openapi.TYPE_STRING
+            ),
+            openapi.Parameter(
+                'apply_date',
+                openapi.IN_QUERY,
+                type=openapi.TYPE_STRING
+            )
+        ],
     )
     def get(self, request, format=None):
         print('dfjjofdfo')
+
         reconstructions = None
-
-        # access_token = request.COOKIES.get("access_token") 
-        # print(access_token)
-        # if not access_token:
-        #     return Response({'error': 'Необходима авторизация'}, status=401)
-        
-        # user_id = session_storage.get(access_token) 
-        # print(user_id)
-                
-        # user_instance = CustomUser.objects.filter(pk=user_id).first() 
-        
-        # user = user_instance
-
-        user = request.user
-        print(user)
-        if user and user.is_authenticated:
-            print(user)
-            if user.is_staff:
-                print(f'стафф')
-                reconstructions = Reconstruction.objects.exclude(status__in=['deleted', 'draft'])
+        # ssid = request.COOKIES["session_id"]
+        # if ssid is not None:
+        #     user_id = session_storage.get(ssid)
+        #     user_instance = CustomUser.objects.filter(pk=user_id).first()
+        user_instance = request.user
+        if user_instance.is_authenticated:
+            if user_instance.is_staff:
+                reconstructions = self.model_class.objects.all().exclude(status__in=['deleted', 'draft'])
             else:
-                print(f'пользователь')
-                reconstructions = Reconstruction.objects.filter(user=user).exclude(status__in=['deleted', 'draft'])
+                reconstructions = self.model_class.objects.filter(user=user_instance).exclude(status__in=['deleted', 'draft'])
 
-            status = request.query_params.get('status')
-            if status:
-                reconstructions = reconstructions.filter(status=status)
-                
-            apply_date = request.query_params.get('apply_date')
-            if apply_date:
-                apply_date_datetime = timezone.datetime.fromisoformat(apply_date)
-                reconstructions = reconstructions.filter(apply_date__date=apply_date_datetime)
+        status = request.query_params.get('status')
+        apply_date = request.query_params.get('apply_date')
 
-            serializer = self.serializer_class(reconstructions, many=True)
-            return Response({'reconstructions': serializer.data})
-        return Response(data={"error": "Вы не авторизованы."}, status=401)
-    
+        if status:
+            reconstructions = reconstructions.filter(status=status)
+        if apply_date:
+            apply_date_datetime = timezone.datetime.fromisoformat(apply_date)
+            reconstructions = reconstructions.filter(apply_date__date=apply_date_datetime)
+
+        serializer = self.serializer_class(reconstructions, many=True)
+
+        return Response({'reconstructions': serializer.data})
+       
+
+
+# ----------------------------------ДЕТАЛИ РЕКОНСТРУКЦИИ----------------------------------------------------------
+
 
 class ReconstructionDetail(APIView):
     work_class = Work

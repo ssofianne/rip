@@ -56,6 +56,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'reconstruction.middleware.RedisSessionMiddleware',
 ]
 
 ROOT_URLCONF = 'lab3.urls'
@@ -86,12 +87,14 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'reconstruction',
-        'USER': 'admin',
+        'USER': 'admin', 
         'PASSWORD': 'admin',
         'HOST': 'localhost',
         'PORT': '5432'
     }
 }
+
+# admin@pgadmin.com
 
 
 # Password validation
@@ -143,7 +146,6 @@ MINIO_USE_SSL = False
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        # 'rest_framework_simplejwt.authentication.JWTAuthentication',
         'rest_framework.authentication.BasicAuthentication',
         'rest_framework.authentication.SessionAuthentication',
 
@@ -160,23 +162,14 @@ AUTH_USER_MODEL = 'reconstruction.CustomUser'
 REDIS_HOST = '127.0.0.1'
 REDIS_PORT = 6379
 
-# JWT = {
-#     "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
-#     "ALGORITHM": "HS256",
-#     "SIGNING_KEY": "django-insecure-2e0dst)o!!ygt-ms9_sr^@lifcyfb1lrj2w5pvz6i_%&47$97b",
-# }
+SESSION_COOKIE_AGE = 60 * 60 * 24  # Срок действия куки, в секундах (например, 1 день)
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # Не удалять сессию при закрытии браузера
+SESSION_COOKIE_NAME = "session_id"  # Убедитесь, что имя совпадает
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"  # Хранение сессий в Redis
+SESSION_COOKIE_SAMESITE = 'Lax'  # Избегайте 'Strict' для кросс-доменных запросов
+SESSION_COOKIE_SECURE = False  # Для локальной разработки False, в продакшене True
+SESSION_COOKIE_HTTPONLY = True
 
-# CACHES = {
-#     "default": {
-#         "BACKEND": "django_redis.cache.RedisCache",
-#         "LOCATION": "redis://docker-redis-1",
-#         "OPTIONS": {
-#             "CLIENT_CLASS": "django_redis.client.DefaultClient"
-#         },
-#     }
-# }
-
-
-# SESSION_ENGINE = "django.contrib.sessions.backends.cache"
-# SESSION_CACHE_ALIAS = "default" 
-# SESSION_COOKIE_NAME = "session_id"
+SWAGGER_SETTINGS = {
+    'USE_SESSION_AUTH': True,  # Включение сессионной аутентификации
+}
