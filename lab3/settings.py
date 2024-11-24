@@ -46,6 +46,8 @@ INSTALLED_APPS = [
 
     # Наше приложение
     'reconstruction',
+
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
@@ -58,6 +60,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'reconstruction.middleware.RedisSessionMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware', 
+    'corsheaders.middleware.CorsMiddleware',
 ]
 
 ROOT_URLCONF = 'lab3.urls'
@@ -163,14 +166,10 @@ AUTH_USER_MODEL = 'reconstruction.CustomUser'
 REDIS_HOST = '127.0.0.1'
 REDIS_PORT = 6379
 
-# SESSION_COOKIE_AGE = 60 * 60 * 24  # Срок действия куки, в секундах (например, 1 день)
-# SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # Не удалять сессию при закрытии браузера
-# SESSION_COOKIE_NAME = "session_id"  # Убедитесь, что имя совпадает
-# SESSION_ENGINE = "django.contrib.sessions.backends.cache"  # Хранение сессий в Redis
-# SESSION_COOKIE_SAMESITE = 'Lax'  # Избегайте 'Strict' для кросс-доменных запросов
+
 SESSION_COOKIE_SECURE = False  # Для локальной разработки False, в продакшене True
 SESSION_COOKIE_HTTPONLY = False
 
-# SWAGGER_SETTINGS = {
-#     'USE_SESSION_AUTH': True,  # Включение сессионной аутентификации
-# }
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",  # Укажите ваш фронтенд-домен
+]

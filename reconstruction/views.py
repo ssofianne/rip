@@ -137,6 +137,7 @@ class WorkList(APIView):
     work_serializer = WorkSerializer
     reconstruction_class = Reconstruction
     reconstruction_serializer = ReconstructionSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
     @swagger_auto_schema(
         operation_summary="Список реконструкционных работ",
@@ -158,7 +159,8 @@ class WorkList(APIView):
 
         draft_reconstruction = None
         user_instance = request.user
-        if user_instance is not None:
+
+        if user_instance and user_instance.is_authenticated:
             draft_reconstruction = self.reconstruction_class.objects.filter(user=user_instance, status='draft').first()
 
         draft_reconstruction_id = 0
@@ -167,7 +169,7 @@ class WorkList(APIView):
             draft_reconstruction_id = draft_reconstruction.id
             count_works = len(Space.objects.filter(reconstruction=draft_reconstruction))
 
-        return Response({'reconstructions': serializer.data, 'draft_reconstruction_id': draft_reconstruction_id, 'count_of_works': count_works})
+        return Response({'works': serializer.data, 'draft_reconstruction_id': draft_reconstruction_id, 'count_of_works': count_works})
 
 
 
