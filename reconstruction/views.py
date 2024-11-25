@@ -463,9 +463,21 @@ class ReconstructionCompletedRejected(APIView):
     serializer_class = ReconstructionSerializer
     permission_classes = [IsAuthenticated]
 
+    status_choices = openapi.Schema(
+        type=openapi.TYPE_STRING,
+        enum=['completed', 'rejected']
+    )
+
     @swagger_auto_schema(
         operation_summary="Завершить/отклонить модератором",
-    )
+        request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'status': status_choices,
+        },
+        required=['status'],
+    ),
+)
     def put(self, request, pk, format=None):
         user_instance = request.user
         if user_instance and user_instance.is_authenticated:
