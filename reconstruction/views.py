@@ -374,6 +374,11 @@ class ReconstructionDetail(APIView):
     )
     def get(self, request, pk, format=None):
         reconstruction = get_object_or_404(self.reconstruction_class, pk=pk)
+        user_instance = request.user
+
+        if user_instance != reconstruction.user and not user_instance.is_staff:
+            return Response({"message": "Вы не являетесь создателем заявки"}, status=status.HTTP_403_FORBIDDEN) 
+        
         serializer = self.reconstruction_serializer(reconstruction)
         spaces = Space.objects.filter(reconstruction=reconstruction).order_by('space')
 
@@ -399,6 +404,11 @@ class ReconstructionDetail(APIView):
     )
     def put(self, request, pk, format=None):
         reconstruction = get_object_or_404(self.reconstruction_class, pk=pk)
+        user_instance = request.user
+
+        if user_instance != reconstruction.user and not user_instance.is_staff:
+            return Response({"message": "Вы не являетесь создателем заявки"}, status=status.HTTP_403_FORBIDDEN) 
+        
         data = request.data.copy()
         place = request.query_params.get('place') 
         if place:
@@ -416,6 +426,11 @@ class ReconstructionDetail(APIView):
     )
     def delete(self, request, pk, format=None):
         reconstruction = get_object_or_404(self.reconstruction_class, pk=pk)
+        user_instance = request.user
+
+        if user_instance != reconstruction.user and not user_instance.is_staff:
+            return Response({"message": "Вы не являетесь создателем заявки"}, status=status.HTTP_403_FORBIDDEN) 
+        
         reconstruction.status = 'deleted'
         reconstruction.save()
         return Response({"message":"Заявка успешно удалена."},status=status.HTTP_204_NO_CONTENT)
