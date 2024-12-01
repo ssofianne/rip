@@ -163,10 +163,14 @@ class WorkList(APIView):
         serializer = self.work_serializer(works, many=True)
 
         draft_reconstruction = None
-        user_instance = request.user
 
-        if user_instance and user_instance.is_authenticated:
-            draft_reconstruction = self.reconstruction_class.objects.filter(user=user_instance, status='draft').first()
+        session_id = request.COOKIES.get('session_id')
+        if session_id:
+            user_id = session_storage.get(session_id)
+            user_instance = CustomUser.objects.get(pk=int(user_id))
+            if user_instance:
+                draft_reconstruction = self.reconstruction_class.objects.filter(user=user_instance, status='draft').first()
+            else: return Response({'message':'Вы не авторизованы'}, status=401)
 
         draft_reconstruction_id = 0
         count_works = 0
@@ -184,17 +188,22 @@ class WorkList(APIView):
         operation_summary="Добавление работы", 
     )
     def post(self, request, format=None):
-        user_instance=request.user
-        if user_instance.is_authenticated:
-            if user_instance.is_staff:             
-                serializer = self.work_class(data=request.data)
-                if serializer.is_valid():
-                    serializer.save()
-                    return Response(serializer.data, status=status.HTTP_201_CREATED)
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)  
-            else: return Response({"message": "Права на данное действие имеет только модератор"}, status=status.HTTP_403_FORBIDDEN)
-        else: return Response({"message": "Вы не авторизованы"}, status=status.HTTP_401_UNAUTHORIZED)    
-    
+        # user_instance=request.user
+
+        session_id = request.COOKIES.get('session_id')
+        if session_id:
+            user_id = session_storage.get(session_id)
+            user_instance = CustomUser.objects.get(pk=int(user_id))
+            if user_instance:
+                if user_instance.is_staff:             
+                    serializer = self.work_class(data=request.data)
+                    if serializer.is_valid():
+                        serializer.save()
+                        return Response(serializer.data, status=status.HTTP_201_CREATED)
+                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)  
+                else: return Response({"message": "Права на данное действие имеет только модератор"}, status=status.HTTP_403_FORBIDDEN)
+            else: return Response({"message": "Вы не авторизованы"}, status=status.HTTP_401_UNAUTHORIZED)
+   
 
 
 
@@ -467,30 +476,36 @@ class ReconstructionDetail(APIView):
 class ReconstructionCreature(APIView):
     model_class = Reconstruction
     serializer_class = ReconstructionSerializer
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(
         operation_summary="Формирование заявки создателем",
     )
     def put(self, request, pk, format=None):
-        user_instance=request.user
-        if user_instance and user_instance.is_authenticated:
-            reconstruction = get_object_or_404(self.model_class, pk=pk)
-            if reconstruction.place is None:
-                return Response({"error": "В заявке не указано место осуществления работ."}, status=status.HTTP_400_BAD_REQUEST)
-            
-            spaces = Space.objects.filter(reconstruction=reconstruction)
-            for space in spaces:
-                if space.space is None or space.space == '':
-                    return Response({"error": f"Объем для работы '{space.work.title}' не указан."}, status=status.HTTP_400_BAD_REQUEST)
+        # user_instance=request.user
+        reconstruction = get_object_or_404(self.model_class, pk=pk)
+        session_id = request.COOKIES.get('session_id')
+        if session_id:
+            user_id = session_storage.get(session_id)
+            user_instance = CustomUser.objects.get(pk=int(user_id))
+            if user_instance != reconstruction.user:
+                return Response({"message": "Вы не являетесь создателем заявки"}, status=status.HTTP_403_FORBIDDEN)
+        else: return Response({'message':'Вы не авторизованы'}, status=401)
+   
+        if reconstruction.place is None:
+            return Response({"error": "В заявке не указано место осуществления работ."}, status=status.HTTP_400_BAD_REQUEST)
+    
+        spaces = Space.objects.filter(reconstruction=reconstruction)
+        for space in spaces:
+            if space.space is None or space.space == '':
+                return Response({"error": f"Объем для работы '{space.work.title}' не указан."}, status=status.HTTP_400_BAD_REQUEST)
 
-            if reconstruction.status != 'deleted':
-                reconstruction.status = 'created'
-                reconstruction.apply_date = timezone.now().isoformat()
-                reconstruction.save()
-                return Response({"message": "Заявка сформирована"}, status=status.HTTP_204_NO_CONTENT)
-            return Response({"message": "Заявка не найдена"}, status=status.HTTP_404_NOT_FOUND)
-        else: return Response({"message": "Вы не авторизованы"}, status=status.HTTP_401_UNAUTHORIZED)
+        if reconstruction.status != 'deleted':
+            reconstruction.status = 'created'
+            reconstruction.apply_date = timezone.now().isoformat()
+            reconstruction.save()
+            return Response({"message": "Заявка сформирована"}, status=status.HTTP_204_NO_CONTENT)
+        return Response({"message": "Заявка не найдена"}, status=status.HTTP_404_NOT_FOUND)
 
 
 
@@ -501,7 +516,7 @@ class ReconstructionCreature(APIView):
 class ReconstructionCompletedRejected(APIView):
     model_class = Reconstruction
     serializer_class = ReconstructionSerializer
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
 
     status_choices = openapi.Schema(
         type=openapi.TYPE_STRING,
@@ -519,27 +534,31 @@ class ReconstructionCompletedRejected(APIView):
     ),
 )
     def put(self, request, pk, format=None):
-        user_instance = request.user
-        if user_instance and user_instance.is_authenticated:
-            if user_instance.is_staff:
-                reconstruction = get_object_or_404(self.model_class, pk=pk)
-                if reconstruction.status != 'created':
-                    return Response({'error': 'Заявка не может быть завершена до того, как будет сформирована'}, status=status.HTTP_400_BAD_REQUEST)
+        # user_instance = request.user
+        session_id = request.COOKIES.get('session_id')
+        if session_id:
+            user_id = session_storage.get(session_id)
+            user_instance = CustomUser.objects.get(pk=int(user_id))
+            if user_instance:
+                if user_instance.is_staff:
+                    reconstruction = get_object_or_404(self.model_class, pk=pk)
+                    if reconstruction.status != 'created':
+                        return Response({'error': 'Заявка не может быть завершена до того, как будет сформирована'}, status=status.HTTP_400_BAD_REQUEST)
 
-                reconstruction.fundraising = round(random.uniform(5000, 500000), 2)
+                    reconstruction.fundraising = round(random.uniform(5000, 500000), 2)
 
-                reconstruction.status = request.data['status']
-                reconstruction.moderator = user_instance
-                reconstruction.end_date = timezone.now().isoformat()
+                    reconstruction.status = request.data['status']
+                    reconstruction.moderator = user_instance
+                    reconstruction.end_date = timezone.now().isoformat()
 
-                reconstruction.save()
-                serializer = self.serializer_class(reconstruction)
+                    reconstruction.save()
+                    serializer = self.serializer_class(reconstruction)
 
-                return Response(serializer.data)
-            else: return Response({'message':'Заявку может завершить только модератор'}, status=status.HTTP_403_FORBIDDEN)
+                    return Response(serializer.data)
+                else: return Response({'message':'Заявку может завершить только модератор'}, status=status.HTTP_403_FORBIDDEN)
         else: return Response({'message':'Вы не авторизованы'}, status=status.HTTP_401_UNAUTHORIZED)
 
-
+        
 
 #------------------------------УДАЛИТЬ ИЗ ЗАЯВКИ, ИЗМЕНИТЬ ОБЪЕМ----------------------------------------------------------------------
     
