@@ -74,9 +74,14 @@ def login(request):
 @api_view(['POST'])
 def logout(request):
 
-    django_logout(request._request)
+    session_id = request.COOKIES.get('session_id')
+    if session_id:
+        session_storage.delete(session_id)  
+        response = Response({"message": "Вы вышли из аккаунта."}, status=status.HTTP_200_OK)
+        response.delete_cookie("session_id") 
+        return response
+    return Response({"error": "Необходима аутентификация."}, status=status.HTTP_401_UNAUTHORIZED)
 
-    return Response({'message': 'Вы успешно вышли из аккаунта'}, status=status.HTTP_204_NO_CONTENT)
 
 class UserViewSet(viewsets.ModelViewSet): 
     """
@@ -137,7 +142,7 @@ class WorkList(APIView):
     work_serializer = WorkSerializer
     reconstruction_class = Reconstruction
     reconstruction_serializer = ReconstructionSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    # permission_classes = [IsAuthenticatedOrReadOnly]
 
     @swagger_auto_schema(
         operation_summary="Список реконструкционных работ",
@@ -222,9 +227,8 @@ def add_image_work(reconstruction, pk, format=None):
 
 # ----------------------ДОБАВЛЕНИЕ В ЗАЯВКУ----------------------------------------------------------------------------
 
-
 class ReconstructionDraft(APIView):
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(
         operation_summary="Добавление в заявку-черновик",
@@ -239,13 +243,16 @@ class ReconstructionDraft(APIView):
         print('lalalsklks')
         draft_reconstruction=None 
 
-        user_instance = request.user
-        
-        if user_instance.is_authenticated: 
-            draft_reconstruction, created = Reconstruction.objects.get_or_create(user=user_instance, status='draft', defaults={'creation_date': timezone.now}) 
-        else: 
-            return Response({'error': 'нет пользователя'}, status=status.HTTP_400_BAD_REQUEST)     
-                        
+        # user_instance = request.user
+        session_id = request.COOKIES.get('session_id')
+        if session_id:
+            user_id = session_storage.get(session_id)
+            user_instance = CustomUser.objects.get(pk=int(user_id))
+            if user_instance:
+                draft_reconstruction, created = Reconstruction.objects.get_or_create(user=user_instance, status='draft', defaults={'creation_date': timezone.now})
+            else:         
+                return Response({'message':'Вы не авторизованы'}, status=401) 
+
         work_id = request.data.get('work_id') 
         work = get_object_or_404(Work, pk=work_id, is_deleted=False) 
 
@@ -255,7 +262,7 @@ class ReconstructionDraft(APIView):
         Space.objects.create(reconstruction=draft_reconstruction, work=work) 
 
         return Response({"message": "Работа успешно добавлена в заявку"}, status=status.HTTP_201_CREATED)
-    
+
 
 
 
@@ -315,7 +322,7 @@ def delete_work(reconstruction, pk, format=None):
 class ReconstructionList(APIView):
     model_class = Reconstruction
     serializer_class = ReconstructionSerializer
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
     
     @swagger_auto_schema(
         operation_summary="Список заявок на реконструкцию",
@@ -335,27 +342,30 @@ class ReconstructionList(APIView):
     def get(self, request, format=None):
 
         reconstructions = None
-        user_instance = request.user
+        # user_instance = request.user
+        session_id = request.COOKIES.get('session_id')
+        if session_id:
+            user_id = session_storage.get(session_id)
+            user_instance = CustomUser.objects.get(pk=int(user_id))
+            if user_instance:
+                if user_instance.is_staff:
+                    reconstructions = self.model_class.objects.all().exclude(status__in=['deleted', 'draft'])
+                else:
+                    reconstructions = self.model_class.objects.filter(user=user_instance).exclude(status__in=['deleted', 'draft'])
+            else: return Response({'message':'Вы не авторизованы'}, status=401)
 
-        if user_instance.is_authenticated:
-            if user_instance.is_staff:
-                reconstructions = self.model_class.objects.all().exclude(status__in=['deleted', 'draft'])
-            else:
-                reconstructions = self.model_class.objects.filter(user=user_instance).exclude(status__in=['deleted', 'draft'])
-        
+        status = request.query_params.get('status')
+        apply_date = request.query_params.get('apply_date')
 
-            status = request.query_params.get('status')
-            apply_date = request.query_params.get('apply_date')
+        if status:
+            reconstructions = reconstructions.filter(status=status)
+        if apply_date:
+            apply_date_datetime = timezone.datetime.fromisoformat(apply_date)
+            reconstructions = reconstructions.filter(apply_date__date=apply_date_datetime)
 
-            if status:
-                reconstructions = reconstructions.filter(status=status)
-            if apply_date:
-                apply_date_datetime = timezone.datetime.fromisoformat(apply_date)
-                reconstructions = reconstructions.filter(apply_date__date=apply_date_datetime)
+        serializer = self.serializer_class(reconstructions, many=True)
 
-            serializer = self.serializer_class(reconstructions, many=True)
-
-            return Response({'reconstructions': serializer.data})
+        return Response({'reconstructions': serializer.data})
        
 
 
@@ -367,17 +377,22 @@ class ReconstructionDetail(APIView):
     work_serializer = WorkSerializer
     reconstruction_class = Reconstruction
     reconstruction_serializer = ReconstructionSerializer
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(
         operation_summary="Одна заявка на реконструкцию",
     )
     def get(self, request, pk, format=None):
         reconstruction = get_object_or_404(self.reconstruction_class, pk=pk)
-        user_instance = request.user
+        # user_instance = request.user
 
-        if user_instance != reconstruction.user and not user_instance.is_staff:
-            return Response({"message": "Вы не являетесь создателем заявки"}, status=status.HTTP_403_FORBIDDEN) 
+        session_id = request.COOKIES.get('session_id')
+        if session_id:
+            user_id = session_storage.get(session_id)
+            user_instance = CustomUser.objects.get(pk=int(user_id))
+            if user_instance != reconstruction.user and not user_instance.is_staff:
+                return Response({"message": "Вы не являетесь создателем заявки"}, status=status.HTTP_403_FORBIDDEN)
+            else: return Response({'message':'Вы не авторизованы'}, status=401)
         
         serializer = self.reconstruction_serializer(reconstruction)
         spaces = Space.objects.filter(reconstruction=reconstruction).order_by('space')
@@ -404,10 +419,15 @@ class ReconstructionDetail(APIView):
     )
     def put(self, request, pk, format=None):
         reconstruction = get_object_or_404(self.reconstruction_class, pk=pk)
-        user_instance = request.user
+        # user_instance = request.user
 
-        if user_instance != reconstruction.user and not user_instance.is_staff:
-            return Response({"message": "Вы не являетесь создателем заявки"}, status=status.HTTP_403_FORBIDDEN) 
+        session_id = request.COOKIES.get('session_id')
+        if session_id:
+            user_id = session_storage.get(session_id)
+            user_instance = CustomUser.objects.get(pk=int(user_id))
+            if user_instance != reconstruction.user and not user_instance.is_staff:
+                return Response({"message": "Вы не являетесь создателем заявки"}, status=status.HTTP_403_FORBIDDEN)
+            else: return Response({'message':'Вы не авторизованы'}, status=401)
         
         data = request.data.copy()
         place = request.query_params.get('place') 
@@ -426,10 +446,15 @@ class ReconstructionDetail(APIView):
     )
     def delete(self, request, pk, format=None):
         reconstruction = get_object_or_404(self.reconstruction_class, pk=pk)
-        user_instance = request.user
+        # user_instance = request.user
 
-        if user_instance != reconstruction.user and not user_instance.is_staff:
-            return Response({"message": "Вы не являетесь создателем заявки"}, status=status.HTTP_403_FORBIDDEN) 
+        session_id = request.COOKIES.get('session_id')
+        if session_id:
+            user_id = session_storage.get(session_id)
+            user_instance = CustomUser.objects.get(pk=int(user_id))
+            if user_instance != reconstruction.user and not user_instance.is_staff:
+                return Response({"message": "Вы не являетесь создателем заявки"}, status=status.HTTP_403_FORBIDDEN)
+            else: return Response({'message':'Вы не авторизованы'}, status=401) 
         
         reconstruction.status = 'deleted'
         reconstruction.save()

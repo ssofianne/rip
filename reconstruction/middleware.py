@@ -1,6 +1,6 @@
 from django.utils.deprecation import MiddlewareMixin
 from django.http import HttpRequest, HttpResponseForbidden
-from django.middleware.csrf import get_token
+# from django.middleware.csrf import get_token
 from reconstruction.models import CustomUser 
 from django.conf import settings
 import redis
