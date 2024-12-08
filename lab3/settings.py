@@ -169,5 +169,5 @@ SESSION_COOKIE_SECURE = False  # Для локальной разработки 
 SESSION_COOKIE_HTTPONLY = False
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # Укажите ваш фронтенд-домен
+    "http://localhost:3000",  
 ]
