@@ -1,10 +1,10 @@
 from django.contrib.auth import authenticate
 from rest_framework import status
 
+from reconstruction.schemas import reconstruction_response_schema, work_response_schema
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
-
 
 from django.contrib.auth.models import User
 
@@ -50,8 +50,8 @@ session_storage = redis.StrictRedis(host=settings.REDIS_HOST, port=settings.REDI
     ),
 )
 @api_view(["POST"])
-@permission_classes([AllowAny])
-@authentication_classes([])
+# @permission_classes([AllowAny])
+# @authentication_classes([])
 def login(request): 
     email = request.data["email"] 
     password = request.data["password"] 
@@ -60,12 +60,13 @@ def login(request):
         random_key = str(uuid.uuid4())
         session_storage.set(random_key, user.pk)
 
-        response = HttpResponse("{'status': 'ok'}")
+        serializer = UserSerializer(user)
+        response = Response(serializer.data, status=status.HTTP_200_OK)
         response.set_cookie("session_id", random_key)
-
+        print("session_id :", random_key)
         return response
     else:
-        return HttpResponse("{'status': 'error', 'error': 'Неверный логин или пароль'}")
+        return HttpResponse("{'status': 'error', 'error': 'login failed'}")
 
 @swagger_auto_schema(
     method='post',
@@ -93,7 +94,7 @@ class UserViewSet(viewsets.ModelViewSet):
     model_class = CustomUser 
  
     def get_permissions(self): 
-        if self.action in ['create']:
+        if self.action in ['create', 'update', 'retrieve']:
             permission_classes = [AllowAny]
         elif self.action in ['list']:
             permission_classes = [IsAdmin | IsManager]
@@ -113,13 +114,67 @@ class UserViewSet(viewsets.ModelViewSet):
             return Response({'status': 'Exist'}, status=400)
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
-            print(serializer.data)
-            self.model_class.objects.create_user(email=serializer.data['email'],
+            new_user = self.model_class.objects.create_user(email=serializer.data['email'],
                                      password=serializer.data['password'],
                                      is_superuser=serializer.data['is_superuser'],
-                                     is_staff=serializer.data['is_staff'])
-            return Response({'status': 'Success'}, status=200)
+                                     is_staff=serializer.data['is_staff'],
+                                     first_name=serializer.data['first_name'],
+                                     last_name=serializer.data['last_name'],
+                                    )
+            response_data = serializer.data
+            response_data['id'] = new_user.id
+
+            print(response_data)
+            return Response(response_data, status=200)
         return Response({'status': 'Error', 'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+    
+    @swagger_auto_schema(
+        operation_summary="Обновление данных пользователя"
+    )
+    def update(self, request, *args, **kwargs):
+        """
+        Функция обновления данных существующего пользователя.
+        Обновляет информацию пользователя по ID, переданному в URL.
+        """
+        ssid = request.COOKIES.get("session_id")
+        if ssid is not None:
+            user_id = session_storage.get(ssid)
+            user_instance = CustomUser.objects.filter(pk=user_id).first()
+            if user_instance is not None:
+                serializer = self.serializer_class(instance=user_instance, data=request.data, partial=True)
+                if serializer.is_valid():
+                    serializer.save()
+                    if 'password' in request.data and request.data['password']:
+                        user_instance.set_password(request.data['password'])
+                        user_instance.save()
+                    updated_user = self.serializer_class(user_instance)
+
+                    return Response(updated_user.data, status=status.HTTP_200_OK)
+                return Response({'status': 'Error', 'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({"error": "No such user"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response({"error": "ssid is nil or empty."}, status=status.HTTP_403_FORBIDDEN)
+
+    @swagger_auto_schema(
+    operation_summary="Получение данных пользователя"
+    )
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Метод для получения данных о пользователе по его ID.
+        """
+        ssid = request.COOKIES.get("session_id")
+        if ssid is not None:
+            user_id = session_storage.get(ssid)
+            user_instance = CustomUser.objects.filter(pk=user_id).first()
+            if user_instance is not None:
+                serializer = self.serializer_class(user_instance)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            else:
+                return Response({"error": "No such user"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response({"error": "ssid is nil or empty."}, status=status.HTTP_403_FORBIDDEN)
+
             
 def method_permission_classes(classes):
     def decorator(func):
@@ -147,13 +202,33 @@ class WorkList(APIView):
     @swagger_auto_schema(
         operation_summary="Список реконструкционных работ",
         manual_parameters=[
-        openapi.Parameter(
-            'work_title',
-            openapi.IN_QUERY,
-            description="Вид работы",
-            type=openapi.TYPE_STRING,
-        )
-    ]
+            openapi.Parameter(
+                'work_title',
+                openapi.IN_QUERY,
+                description="Вид работы",
+                type=openapi.TYPE_STRING
+            ),
+        ],
+        responses={
+            200: openapi.Response(
+                description="",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'works': openapi.Schema(
+                            type=openapi.TYPE_ARRAY,
+                            items=work_response_schema,
+                        ),
+                        'draft_reconstruction_id': openapi.Schema(
+                            type=openapi.TYPE_INTEGER
+                        ),
+                        'count_of_works': openapi.Schema(
+                            type=openapi.TYPE_INTEGER
+                        ),
+                    }
+                )
+            )
+        }
     )
     def get(self, request, format=None):
         works = self.work_class.objects.filter(is_deleted=False)  
@@ -179,9 +254,6 @@ class WorkList(APIView):
             count_works = len(Space.objects.filter(reconstruction=draft_reconstruction))
 
         return Response({'works': serializer.data, 'draft_reconstruction_id': draft_reconstruction_id, 'count_of_works': count_works})
-
-
-
 
     @swagger_auto_schema(
         request_body=WorkSerializer,
@@ -238,6 +310,7 @@ def add_image_work(reconstruction, pk, format=None):
 
 class ReconstructionDraft(APIView):
     # permission_classes = [IsAuthenticated]
+    model_class = Reconstruction
 
     @swagger_auto_schema(
         operation_summary="Добавление в заявку-черновик",
@@ -246,7 +319,12 @@ class ReconstructionDraft(APIView):
             properties={
                 'work_id': openapi.Schema(type=openapi.TYPE_INTEGER, description="ID работы"),
             },
+            required=['work_id']
         ),
+        responses={
+            201: openapi.Response('Created'),
+            400: openapi.Response('Bad Request')
+        }
     )
     def post(self, request, format=None): 
         print('lalalsklks')
@@ -258,7 +336,7 @@ class ReconstructionDraft(APIView):
             user_id = session_storage.get(session_id)
             user_instance = CustomUser.objects.get(pk=int(user_id))
             if user_instance:
-                draft_reconstruction, created = Reconstruction.objects.get_or_create(user=user_instance, status='draft', defaults={'creation_date': timezone.now})
+                draft_reconstruction, created = self.model_class.objects.get_or_create(user=user_instance, status='draft', defaults={'creation_date': timezone.now})
             else:         
                 return Response({'message':'Вы не авторизованы'}, status=401) 
 
@@ -325,16 +403,13 @@ def delete_work(reconstruction, pk, format=None):
 
 # -------------------------------------------СПИСОК ЗАЯВОК------------------------------------------------
 
-
-
-
 class ReconstructionList(APIView):
     model_class = Reconstruction
     serializer_class = ReconstructionSerializer
     # permission_classes = [IsAuthenticated]
     
     @swagger_auto_schema(
-        operation_summary="Список заявок на реконструкцию",
+        operation_summary="Список реконструкций",
         manual_parameters=[
             openapi.Parameter(
                 'status',
@@ -347,6 +422,37 @@ class ReconstructionList(APIView):
                 type=openapi.TYPE_STRING
             )
         ],
+        responses={
+            200: openapi.Response(
+                examples={
+                    'application/json': {
+                        'reconstructions': [
+                            {
+                                "pk": 2,
+                                "status": "created",
+                                "creation_date": "2024-10-22T22:27:30Z",
+                                "apply_date": None,
+                                "end_date": None,
+                                "creator": "creator@gmail.com",
+                                "moderator": "moderator@gmail.com",
+                                "place": None,
+                                "fundraising": None
+                            }
+                        ]
+                    }
+                },
+                description="",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'reconstructions': openapi.Schema(
+                            type=openapi.TYPE_ARRAY,
+                            items=reconstruction_response_schema,
+                        )
+                    }
+                )
+            )
+        }
     )
     def get(self, request, format=None):
 
@@ -389,7 +495,22 @@ class ReconstructionDetail(APIView):
     # permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(
-        operation_summary="Одна заявка на реконструкцию",
+        operation_summary="Одна реконструкция",
+        responses={
+            200: openapi.Response(
+                description="",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'reconstruction': reconstruction_response_schema,
+                        'works': openapi.Schema(
+                            type=openapi.TYPE_ARRAY,
+                            items=work_response_schema,
+                        )
+                    }
+                )
+            )
+        }
     )
     def get(self, request, pk, format=None):
         reconstruction = get_object_or_404(self.reconstruction_class, pk=pk)
@@ -417,14 +538,7 @@ class ReconstructionDetail(APIView):
     
     @swagger_auto_schema(
         operation_summary="Изменение деталей заявки на реконструкцию",
-        manual_parameters=[
-        openapi.Parameter(
-            'place',
-            openapi.IN_QUERY,
-            description="Место",
-            type=openapi.TYPE_STRING,
-        )
-    ]
+        request_body=reconstruction_serializer,
     )
     def put(self, request, pk, format=None):
         reconstruction = get_object_or_404(self.reconstruction_class, pk=pk)
@@ -437,14 +551,8 @@ class ReconstructionDetail(APIView):
             if user_instance != reconstruction.user and not user_instance.is_staff:
                 return Response({"message": "Вы не являетесь создателем заявки"}, status=status.HTTP_403_FORBIDDEN)
             else: return Response({'message':'Вы не авторизованы'}, status=401)
-        
-        data = request.data.copy()
-        place = request.query_params.get('place') 
-        if place:
-            data['place'] = place
 
-        serializer = self.reconstruction_serializer(reconstruction, data=data, partial=True)
-
+        serializer = self.reconstruction_serializer(reconstruction, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
@@ -452,6 +560,9 @@ class ReconstructionDetail(APIView):
     
     @swagger_auto_schema(
         operation_summary="Удаление заявки на реконструкцию",
+        responses={
+            204: openapi.Response('No Content'),
+        }
     )
     def delete(self, request, pk, format=None):
         reconstruction = get_object_or_404(self.reconstruction_class, pk=pk)
@@ -480,6 +591,10 @@ class ReconstructionCreature(APIView):
 
     @swagger_auto_schema(
         operation_summary="Формирование заявки создателем",
+        responses={
+            204: openapi.Response('No Content'),
+            400: openapi.Response('Bad Request')
+        }
     )
     def put(self, request, pk, format=None):
         # user_instance=request.user
@@ -526,13 +641,17 @@ class ReconstructionCompletedRejected(APIView):
     @swagger_auto_schema(
         operation_summary="Завершить/отклонить модератором",
         request_body=openapi.Schema(
-        type=openapi.TYPE_OBJECT,
-        properties={
-            'status': status_choices,
-        },
-        required=['status'],
-    ),
-)
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'status': status_choices,
+            },
+            required=['status'],
+        ),
+        responses={
+            200: openapi.Response('Success', serializer_class),
+            400: openapi.Response('Bad Request')
+        }
+    )
     def put(self, request, pk, format=None):
         # user_instance = request.user
         session_id = request.COOKIES.get('session_id')
@@ -560,9 +679,7 @@ class ReconstructionCompletedRejected(APIView):
 
         
 
-#------------------------------УДАЛИТЬ ИЗ ЗАЯВКИ, ИЗМЕНИТЬ ОБЪЕМ----------------------------------------------------------------------
-    
-
+#------------------------------УДАЛИТЬ ИЗ ЗАЯВКИ, ИЗМЕНИТЬ ОБЪЕМ---------------------------------------------------------------------- 
 
 class ReconstructionSpace(APIView):
 

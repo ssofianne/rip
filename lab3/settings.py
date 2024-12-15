@@ -58,7 +58,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     # 'reconstruction.middleware.RedisSessionMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware', 
+    # 'django.middleware.csrf.CsrfViewMiddleware', 
     'corsheaders.middleware.CorsMiddleware',
 ]
 
@@ -165,9 +165,16 @@ REDIS_HOST = '127.0.0.1'
 REDIS_PORT = 6379
 
 
-SESSION_COOKIE_SECURE = False  # Для локальной разработки False, в продакшене True
-SESSION_COOKIE_HTTPONLY = False
-
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  
 ]
+CORS_ALLOW_CREDENTIALS = True
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:3000'
+]
+CORS_ORIGIN_WHITELIST = [
+    "http://localhost:3000",
+]
+
+SESSION_COOKIE_SAMESITE = 'None'
+SESSION_COOKIE_SECURE = True

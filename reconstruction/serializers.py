@@ -10,11 +10,7 @@ class UserSerializer(serializers.ModelSerializer):
     is_superuser = serializers.BooleanField(default=False, required=False)
     class Meta:
         model = CustomUser
-        fields = ['email', 'password', 'is_staff', 'is_superuser']
-    # def create(self, validated_data):
-    #     password = validated_data.pop('password', None)
-    #     user = CustomUser.objects.create_user(**validated_data, password=password)
-    #     return user
+        fields = ['pk', 'email', 'password', 'first_name', 'last_name', 'is_staff', 'is_superuser']
 
 
 class WorkSerializer(serializers.ModelSerializer):
