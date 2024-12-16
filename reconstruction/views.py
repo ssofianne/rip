@@ -522,7 +522,7 @@ class ReconstructionDetail(APIView):
             user_instance = CustomUser.objects.get(pk=int(user_id))
             if user_instance != reconstruction.user and not user_instance.is_staff:
                 return Response({"message": "Вы не являетесь создателем заявки"}, status=status.HTTP_403_FORBIDDEN)
-            else: return Response({'message':'Вы не авторизованы'}, status=401)
+        else: return Response({'message':'Вы не авторизованы'}, status=401)
         
         serializer = self.reconstruction_serializer(reconstruction)
         spaces = Space.objects.filter(reconstruction=reconstruction).order_by('space')
