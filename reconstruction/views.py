@@ -141,11 +141,13 @@ class UserViewSet(viewsets.ModelViewSet):
             user_id = session_storage.get(ssid)
             user_instance = CustomUser.objects.filter(pk=user_id).first()
             if user_instance is not None:
-                serializer = self.serializer_class(instance=user_instance, data=request.data, partial=True)
+                user_data = request.data.copy()
+                password = user_data.pop('password', None)
+                serializer = self.serializer_class(instance=user_instance, data=user_data, partial=True)
                 if serializer.is_valid():
                     serializer.save()
-                    if 'password' in request.data and request.data['password']:
-                        user_instance.set_password(request.data['password'])
+                    if password:
+                        user_instance.set_password(password)
                         user_instance.save()
                     updated_user = self.serializer_class(user_instance)
 
