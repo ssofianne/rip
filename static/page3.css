@@ -53,6 +53,7 @@
     display: flex;
     padding-left: 10px;
     width: 540px;
+    text-align: center;
 }
 
 .result-fundraising{
@@ -63,6 +64,7 @@
     display: flex;
     font-weight: bold;
     font-size: 27px;
+    text-align: center;
 }
 
 .container-up{

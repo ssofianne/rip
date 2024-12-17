@@ -550,7 +550,7 @@ class ReconstructionDetail(APIView):
             user_instance = CustomUser.objects.get(pk=int(user_id))
             if user_instance != reconstruction.user and not user_instance.is_staff:
                 return Response({"message": "Вы не являетесь создателем заявки"}, status=status.HTTP_403_FORBIDDEN)
-            else: return Response({'message':'Вы не авторизованы'}, status=401)
+        else: return Response({'message':'Вы не авторизованы'}, status=401)
 
         serializer = self.reconstruction_serializer(reconstruction, data=request.data, partial=True)
         if serializer.is_valid():
@@ -574,7 +574,7 @@ class ReconstructionDetail(APIView):
             user_instance = CustomUser.objects.get(pk=int(user_id))
             if user_instance != reconstruction.user and not user_instance.is_staff:
                 return Response({"message": "Вы не являетесь создателем заявки"}, status=status.HTTP_403_FORBIDDEN)
-            else: return Response({'message':'Вы не авторизованы'}, status=401) 
+        else: return Response({'message':'Вы не авторизованы'}, status=401) 
         
         reconstruction.status = 'deleted'
         reconstruction.save()
@@ -691,26 +691,18 @@ class ReconstructionSpace(APIView):
         work = get_object_or_404(Work, pk=work_id)
         space_delete = get_object_or_404(Space, reconstruction=reconstruction, work=work)
         space_delete.delete()
-
+        
         return Response({"message": "Работа успешно удалена из заявки."}, status=status.HTTP_204_NO_CONTENT)
     
     @swagger_auto_schema(
         operation_summary="Изменить объем работы в заявке на реконструкцию",
-        manual_parameters=[
-        openapi.Parameter(
-            'space',
-            openapi.IN_QUERY,
-            description="Объем работы",
-            type=openapi.TYPE_STRING,
-        )
-    ]
     )
     def put(self, request, reconstruction_id=None, work_id=None, format=None):
         reconstruction = get_object_or_404(Reconstruction, pk=reconstruction_id, status='draft')
         work = get_object_or_404(Work, pk=work_id)
 
         change_space = get_object_or_404(Space, reconstruction=reconstruction, work=work)
-        new_space_value = request.query_params.get('space')
+        new_space_value = request.data.get('space')
 
         if new_space_value is not None:
             change_space.space = new_space_value

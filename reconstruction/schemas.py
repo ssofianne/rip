@@ -22,6 +22,6 @@ reconstruction_response_schema = openapi.Schema(
         'creator': openapi.Schema(type=openapi.TYPE_STRING),
         'moderator': openapi.Schema(type=openapi.TYPE_INTEGER),
         'place': openapi.Schema(type=openapi.TYPE_STRING),
-        'fundraising': openapi.Schema(type=openapi.TYPE_STRING),
+        'fundraising': openapi.Schema(type=openapi.TYPE_INTEGER),
     }
 )
