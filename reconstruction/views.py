@@ -145,10 +145,9 @@ class UserViewSet(viewsets.ModelViewSet):
                 password = user_data.pop('password', None)
                 serializer = self.serializer_class(instance=user_instance, data=user_data, partial=True)
                 if serializer.is_valid():
-                    serializer.save()
                     if password:
                         user_instance.set_password(password)
-                        user_instance.save()
+                    serializer.save()
                     updated_user = self.serializer_class(user_instance)
 
                     return Response(updated_user.data, status=status.HTTP_200_OK)
@@ -472,13 +471,26 @@ class ReconstructionList(APIView):
             else: return Response({'message':'Вы не авторизованы'}, status=401)
 
         status = request.query_params.get('status')
-        apply_date = request.query_params.get('apply_date')
+        apply_date_start = request.query_params.get('apply_date_start')
+        apply_date_end = request.query_params.get('apply_date_end')
 
         if status:
             reconstructions = reconstructions.filter(status=status)
-        if apply_date:
-            apply_date_datetime = timezone.datetime.fromisoformat(apply_date)
-            reconstructions = reconstructions.filter(apply_date__date=apply_date_datetime)
+
+        if apply_date_start and apply_date_end:
+            apply_date_start_datetime = timezone.datetime.fromisoformat(apply_date_start)
+            apply_date_end_datetime = timezone.datetime.fromisoformat(apply_date_end)
+            reconstructions = reconstructions.filter(
+                apply_date__date__gte=apply_date_start_datetime,
+                apply_date__date__lte=apply_date_end_datetime
+            )
+        elif apply_date_start:
+              apply_date_start_datetime = timezone.datetime.fromisoformat(apply_date_start)
+              reconstructions = reconstructions.filter(apply_date__date__gte=apply_date_start_datetime)
+        elif apply_date_end:
+              apply_date_end_datetime = timezone.datetime.fromisoformat(apply_date_end)
+              reconstructions = reconstructions.filter(apply_date__date__lte=apply_date_end_datetime)
+
 
         serializer = self.serializer_class(reconstructions, many=True)
 
@@ -524,7 +536,8 @@ class ReconstructionDetail(APIView):
             user_instance = CustomUser.objects.get(pk=int(user_id))
             if user_instance != reconstruction.user and not user_instance.is_staff:
                 return Response({"message": "Вы не являетесь создателем заявки"}, status=status.HTTP_403_FORBIDDEN)
-        else: return Response({'message':'Вы не авторизованы'}, status=401)
+        else: 
+            return Response({'message':'Вы не авторизованы'}, status=status.HTTP_401_UNAUTHORIZED)
         
         serializer = self.reconstruction_serializer(reconstruction)
         spaces = Space.objects.filter(reconstruction=reconstruction).order_by('space')
@@ -703,6 +716,14 @@ class ReconstructionSpace(APIView):
         reconstruction = get_object_or_404(Reconstruction, pk=reconstruction_id, status='draft')
         work = get_object_or_404(Work, pk=work_id)
 
+        session_id = request.COOKIES.get('session_id')
+        if session_id:
+            user_id = session_storage.get(session_id)
+            user_instance = CustomUser.objects.get(pk=int(user_id))
+            if user_instance != reconstruction.user and not user_instance.is_staff:
+                return Response({"message": "Вы не являетесь создателем заявки"}, status=status.HTTP_403_FORBIDDEN)
+        else: return Response({'message':'Вы не авторизованы'}, status=401)
+        
         change_space = get_object_or_404(Space, reconstruction=reconstruction, work=work)
         new_space_value = request.data.get('space')
 
