@@ -479,26 +479,12 @@ class ReconstructionList(APIView):
         if status:
             reconstructions = reconstructions.filter(status=status)
 
-        apply_date_start = request.query_params.get('apply_date_start')
-        apply_date_end = request.query_params.get('apply_date_end')
-
-        if apply_date_start and apply_date_end:
-            if apply_date_start == apply_date_end:
-                reconstructions = reconstructions.filter(apply_date__exact=apply_date_start)
-            else:
-                apply_date_start_datetime = datetime.fromisoformat(apply_date_start).replace(hour=0, minute=0, second=0)
-                apply_date_end_datetime = datetime.fromisoformat(apply_date_end).replace(hour=23, minute=59, second=59)
-                reconstructions = reconstructions.filter(
-                    apply_date__gte=apply_date_start_datetime,
-                    apply_date__lte=apply_date_end_datetime
-                )
-        elif apply_date_start:
-            apply_date_start_datetime = datetime.fromisoformat(apply_date_start).replace(hour=0, minute=0, second=0)
-            reconstructions = reconstructions.filter(apply_date__gte=apply_date_start_datetime)
-        elif apply_date_end:
-            apply_date_end_datetime = datetime.fromisoformat(apply_date_end).replace(hour=23, minute=59, second=59)
-            reconstructions = reconstructions.filter(apply_date__lte=apply_date_end_datetime)
-
+        if apply_date_start:
+            start_apply_datetime = timezone.datetime.fromisoformat(apply_date_start)
+            reconstructions = reconstructions.filter(apply_date__date__gte=start_apply_datetime)
+        if apply_date_end:
+            end_apply_datetime = timezone.datetime.fromisoformat(apply_date_end)
+            reconstructions = reconstructions.filter(apply_date__date__lte=end_apply_datetime)
 
         serializer = self.serializer_class(reconstructions, many=True)
 
