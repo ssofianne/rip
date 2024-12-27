@@ -673,7 +673,8 @@ class ReconstructionCompletedRejected(APIView):
                     if reconstruction.status != 'created':
                         return Response({'error': 'Заявка не может быть завершена до того, как будет сформирована'}, status=status.HTTP_400_BAD_REQUEST)
 
-                    reconstruction.fundraising = round(random.uniform(5000, 500000), 2)
+                    if request.data['status'] == 'completed':
+                        reconstruction.fundraising = round(random.uniform(5000, 500000), 2)
 
                     reconstruction.status = request.data['status']
                     reconstruction.moderator = user_instance
